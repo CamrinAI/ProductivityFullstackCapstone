@@ -12,7 +12,6 @@ A full-stack app that monitors API latency with Sonic character tiers, compares 
 ✅ **Car Battle Engine** - Compare vehicles using:
 - CarQuery API for specs (HP, 0-60, torque)
 - MarketCheck API for fair market value pricing
-- Location-based pricing (ZIP: 75146)
 
 ✅ **Product Comparison** - Multi-merchant product aggregation (framework ready)
 
