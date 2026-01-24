@@ -1,9 +1,11 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_cors import CORS
 import logging
 
 db = SQLAlchemy()
+migrate = Migrate()
 
 def create_app(config_name='development'):
     app = Flask(__name__)
@@ -12,6 +14,7 @@ def create_app(config_name='development'):
     app.config.from_object(config.get(config_name, config['development']))
     
     db.init_app(app)
+    migrate.init_app(app, db)
     CORS(app, supports_credentials=True)
     
     with app.app_context():
@@ -23,7 +26,6 @@ def create_app(config_name='development'):
         app.register_blueprint(voice_bp)
         register_error_handlers(app)
         
-        db.create_all()
         app.logger.info('✅ Flask app initialized')
     
     return app

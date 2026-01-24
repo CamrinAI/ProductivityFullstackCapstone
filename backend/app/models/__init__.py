@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from sqlalchemy.ext.hybrid import hybrid_property
 from app import db
 
 class AssetStatus(Enum):
@@ -35,6 +36,7 @@ class Asset(db.Model):
     name = db.Column(db.String(255), nullable=False)
     asset_type = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
+    serial_number = db.Column(db.String(100), unique=True)
     qr_code = db.Column(db.String(255), unique=True, nullable=False)
     location = db.Column(db.String(255))
     status = db.Column(db.String(50), default=AssetStatus.SONIC.value)
@@ -44,25 +46,26 @@ class Asset(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    def get_status(self):
-        if self.checkout_date:
-            days = (datetime.utcnow() - self.checkout_date).days
-            if days > 30:
-                return AssetStatus.EGGMAN.value
-            elif days >= 7:
-                return AssetStatus.TAILS.value
-            else:
-                return AssetStatus.SONIC.value
-        return AssetStatus.SONIC.value
+    @hybrid_property
+    def status_tier(self):
+        if not self.checkout_date:
+            return AssetStatus.SONIC.value
+        days = (datetime.utcnow() - self.checkout_date).days
+        if days < 7:
+            return AssetStatus.SONIC.value
+        if days < 30:
+            return AssetStatus.TAILS.value
+        return AssetStatus.EGGMAN.value
     
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'asset_type': self.asset_type,
+            'serial_number': self.serial_number,
             'qr_code': self.qr_code,
             'location': self.location,
-            'status': self.get_status(),
+            'status': self.status_tier,
             'is_available': self.is_available,
             'checkout_date': self.checkout_date.isoformat() if self.checkout_date else None,
         }

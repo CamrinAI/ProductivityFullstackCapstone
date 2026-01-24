@@ -6,6 +6,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_SORT_KEYS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    API_BEARER_TOKEN = os.getenv('API_BEARER_TOKEN')
 
 class DevelopmentConfig(Config):
     """Development environment."""

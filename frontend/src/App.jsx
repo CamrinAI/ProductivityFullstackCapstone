@@ -19,7 +19,9 @@ export default function App() {
   const fetchAssets = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/assets?user_id=${userId}`);
+      const res = await fetch(`http://localhost:3000/api/assets`, {
+        headers: { 'X-User-ID': userId }
+      });
       const data = await res.json();
       if (data.success) setAssets(data.assets);
     } catch (e) {
@@ -30,7 +32,9 @@ export default function App() {
 
   const fetchMaterials = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/assets/materials?user_id=${userId}`);
+      const res = await fetch(`http://localhost:3000/api/assets/materials`, {
+        headers: { 'X-User-ID': userId }
+      });
       const data = await res.json();
       if (data.success) setMaterials(data.materials);
     } catch (e) {
@@ -58,7 +62,7 @@ export default function App() {
             </div>
             <button
               onClick={() => setShowVoice(true)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg"
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-5 h-12 rounded-lg text-sm font-semibold"
             >
               <Mic className="w-4 h-4" />
               Voice Update
@@ -141,6 +145,16 @@ export default function App() {
 
       {/* Voice Modal */}
       {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} userId={userId} />}
+
+      {/* Floating QR scan FAB */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => alert('QR scanning coming soon — connect to html5-qrcode here')}
+          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white border border-blue-400/40"
+        >
+          <QrCode className="w-7 h-7" />
+        </button>
+      </div>
     </div>
   );
 }

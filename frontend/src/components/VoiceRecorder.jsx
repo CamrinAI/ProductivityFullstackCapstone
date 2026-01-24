@@ -193,11 +193,13 @@ export default function VoiceRecorder({ onClose, userId, onUpdate }) {
         )}
 
         {loading && (
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <Mic className="w-6 h-6 text-purple-400" />
+          <div className="text-center flex flex-col items-center gap-3">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-purple-500/40 animate-[spin_1.2s_linear_infinite]"></div>
+              <div className="absolute inset-2 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 animate-pulse" />
+              <Mic className="absolute inset-0 m-auto w-6 h-6 text-white" />
             </div>
-            <p className="mt-2 text-gray-400">Processing audio...</p>
+            <p className="text-gray-300 text-sm">Whisper transcribing...</p>
           </div>
         )}
 

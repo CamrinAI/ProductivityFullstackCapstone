@@ -10,6 +10,8 @@ Professional full-stack asset management platform for electricians, plumbers, an
 - **Location-Based Alerts**: Get alerted when assets are far from job site
 - **Material Management**: Track consumables with min-stock levels
 - **Checkout/Checkin Logs**: Full audit trail for all asset movements
+- **Auth Guard**: Header-based user identity (`X-User-ID`) with optional bearer token (`Authorization: Bearer <token>`) to protect owner-only routes
+- **Geofencing (planned)**: Compare navigator.geolocation to stored job_site coords to trigger alerts when outside permitted radius
 
 ## 🛠 Tech Stack
 
@@ -61,6 +63,10 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+# first-time DB setup (Flask-Migrate)
+FLASK_APP=app:create_app FLASK_ENV=development flask db upgrade
+
+# run server
 python run.py
 ```
 
