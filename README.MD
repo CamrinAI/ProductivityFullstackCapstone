@@ -83,6 +83,19 @@ npm run dev
 App runs on http://localhost:5173
 
 ### Environment Variables
+- **API Routes**
+
+| Method | Path | Headers | Body | Notes |
+| --- | --- | --- | --- | --- |
+| GET | /api/assets?page=&per_page= | X-User-ID, [Authorization Bearer optional] | - | Paginated list of user-owned assets |
+| POST | /api/assets | X-User-ID | `{ "name", "asset_type?", "description?", "location?", "serial_number?" }` | Creates asset with unique serial (if provided) |
+| POST | /api/assets/<id>/checkout | X-User-ID | `{ "location": "Job Site" }` | Marks asset checked out, logs location |
+| POST | /api/assets/<id>/checkin | X-User-ID | `{ "location": "Warehouse" }` | Marks asset checked in |
+| GET | /api/assets/<id>/qr | X-User-ID | - | Downloads QR PNG for asset |
+| POST | /api/assets/<id>/serial | X-User-ID | `{ "serial_number": "ABC-123" }` | Updates/sets serial number (unique) |
+| GET | /api/assets/materials | X-User-ID | - | Lists materials |
+| POST | /api/assets/materials | X-User-ID | `{ "name", "unit?", "quantity?", "min_stock?" }` | Creates material |
+| POST | /api/voice/update | X-User-ID + multipart/form-data | `audio` file | Voice-to-inventory update (Whisper + GPT-4o) |
 
 Create `.env` in backend/:
 

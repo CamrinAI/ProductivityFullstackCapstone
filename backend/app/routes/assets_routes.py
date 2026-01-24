@@ -28,11 +28,33 @@ def get_user():
         raise APIError("User not found", 404)
     return user
 
+
+def validate_ownership(resource, user):
+    if not resource:
+        raise APIError("Asset not found", 404)
+    if resource.owner_id != user.id:
+        raise APIError("Forbidden", 403)
+
+
+def get_owned_asset(asset_id, user):
+    asset = Asset.query.get(asset_id)
+    validate_ownership(asset, user)
+    return asset
+
 @assets_bp.route('', methods=['GET'])
 def list_assets():
     user = get_user()
-    assets = Asset.query.filter_by(owner_id=user.id).all()
-    return jsonify({'success': True, 'assets': [a.to_dict() for a in assets]}), 200
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    pagination = Asset.query.filter_by(owner_id=user.id).paginate(page=page, per_page=per_page, error_out=False)
+    return jsonify({
+        'success': True,
+        'assets': [a.to_dict() for a in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages,
+        'per_page': pagination.per_page
+    }), 200
 
 @assets_bp.route('', methods=['POST'])
 def create_asset():
@@ -63,9 +85,7 @@ def create_asset():
 @assets_bp.route('/<int:asset_id>/checkout', methods=['POST'])
 def checkout_asset(asset_id):
     user = get_user()
-    asset = Asset.query.filter_by(id=asset_id, owner_id=user.id).first()
-    if not asset:
-        raise APIError("Asset not found", 404)
+    asset = get_owned_asset(asset_id, user)
     
     data = request.get_json() or {}
     checkout = CheckoutLog(
@@ -84,9 +104,7 @@ def checkout_asset(asset_id):
 @assets_bp.route('/<int:asset_id>/checkin', methods=['POST'])
 def checkin_asset(asset_id):
     user = get_user()
-    asset = Asset.query.filter_by(id=asset_id, owner_id=user.id).first()
-    if not asset:
-        raise APIError("Asset not found", 404)
+    asset = get_owned_asset(asset_id, user)
     
     data = request.get_json() or {}
     checkout = CheckoutLog.query.filter_by(asset_id=asset.id, checkin_time=None).first()
@@ -103,9 +121,7 @@ def checkin_asset(asset_id):
 @assets_bp.route('/<int:asset_id>/qr', methods=['GET'])
 def generate_qr(asset_id):
     user = get_user()
-    asset = Asset.query.filter_by(id=asset_id, owner_id=user.id).first()
-    if not asset:
-        raise APIError("Asset not found", 404)
+    asset = get_owned_asset(asset_id, user)
     
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(asset.qr_code)

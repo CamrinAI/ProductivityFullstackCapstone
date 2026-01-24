@@ -23,7 +23,7 @@ export default function App() {
         headers: { 'X-User-ID': userId }
       });
       const data = await res.json();
-      if (data.success) setAssets(data.assets);
+      if (data.success) setAssets(data.assets || data.items || []);
     } catch (e) {
       console.error(e);
     }
