@@ -1,43 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { Download, AlertTriangle, Save } from 'lucide-react';
 
-export default function AssetCard({ asset, onRefresh, token }) {
+/**
+ * AssetCard Component
+ * 
+ * Displays a single asset with:
+ * - Sonic-tier status badge (color-coded health indicator)
+ * - Location management
+ * - Serial number assignment
+ * - Checkout/Checkin toggle buttons
+ * - QR code download for physical labeling
+ * - Delete asset action
+ */
+export default function AssetCard({ asset, onRefresh }) {
   const [loading, setLoading] = useState(false);
   const [serial, setSerial] = useState(asset.serial_number || '');
   const [savingSerial, setSavingSerial] = useState(false);
   const [localAvailable, setLocalAvailable] = useState(asset.is_available);
   const [localStatus, setLocalStatus] = useState(asset.status);
 
+  // Sync local state when asset prop changes
   useEffect(() => {
     setSerial(asset.serial_number || '');
     setLocalAvailable(asset.is_available);
     setLocalStatus(asset.status);
   }, [asset.serial_number, asset.is_available, asset.status]);
 
+  // Toggle asset checkout status and log location
   const handleCheckout = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
       await fetch(`http://localhost:3000/api/assets/${asset.id}/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: 'Job Site' }),
       });
       onRefresh();
     } catch (e) {
       console.error(e);
-      // rollback optimistic flip on failure
+      // Rollback optimistic UI update on error
       setLocalAvailable(prevAvailable);
       setLocalStatus(prevStatus);
     }
     setLoading(false);
   };
 
+  // Toggle asset checkin status and update location
   const handleCheckin = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
       await fetch(`http://localhost:3000/api/assets/${asset.id}/checkin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: 'Warehouse' }),
       });
       onRefresh();
@@ -49,14 +63,14 @@ export default function AssetCard({ asset, onRefresh, token }) {
     setLoading(false);
   };
 
+  // Map status to display badge and card styling
   const tierBadge = { sonic: '✅ SONIC', tails: '⚠️ TAILS', eggman: '🚨 EGGMAN' }[localStatus];
   const tierColor = { sonic: 'sonic-card', tails: 'tails-card', eggman: 'eggman-card' }[localStatus];
 
+  // Generate QR code PNG from asset UUID
   const handleDownloadQR = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/assets/${asset.id}/qr`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch(`http://localhost:3000/api/assets/${asset.id}/qr`);
       if (!res.ok) throw new Error('Failed to download QR');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -80,7 +94,7 @@ export default function AssetCard({ asset, onRefresh, token }) {
     try {
       await fetch(`http://localhost:3000/api/assets/${asset.id}/serial`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serial_number: serial.trim() }),
       });
       onRefresh();
@@ -101,7 +115,7 @@ export default function AssetCard({ asset, onRefresh, token }) {
     try {
       await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: locationInput })
       });
       onRefresh();
@@ -113,8 +127,7 @@ export default function AssetCard({ asset, onRefresh, token }) {
     if (!confirm('Delete this asset?')) return;
     try {
       await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'DELETE'
       });
       onRefresh();
     } catch (e) {

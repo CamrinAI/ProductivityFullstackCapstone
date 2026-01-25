@@ -1,23 +1,38 @@
 import React, { useState, useRef } from 'react';
 import { Mic, X, Send, Check, AlertCircle } from 'lucide-react';
 
-export default function VoiceRecorder({ onClose, token, onUpdate }) {
+/**
+ * VoiceRecorder Component
+ * 
+ * Modal interface for recording audio and sending to voice-to-inventory API.
+ * Flow: Record audio → Send to backend → Whisper transcription → GPT-4o parsing → Database update
+ * 
+ * Displays:
+ * - Recording button with visual feedback
+ * - Parsed result (item name, quantity, action)
+ * - Original transcript from Whisper
+ * - Error handling with user feedback
+ */
+export default function VoiceRecorder({ onClose, onUpdate }) {
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Browser MediaRecorder API refs for audio capture
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
 
+  // Initialize microphone and start recording
   const startRecording = async () => {
     try {
       setError(null);
       setTranscript('');
       setResult(null);
       
+      // Request microphone access with audio enhancement options
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { 
           echoCancellation: true,
@@ -31,6 +46,7 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
+      // Collect audio data chunks as recording progresses
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data);
@@ -47,6 +63,7 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
     }
   };
 
+  // Stop recording and release microphone
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
@@ -56,6 +73,7 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
     }
   };
 
+  // Send recorded audio to backend for processing
   const submitAudio = async () => {
     if (chunksRef.current.length === 0) {
       setError('No audio recorded');
@@ -66,15 +84,16 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
     setError(null);
     
     try {
+      // Create blob and form data for multipart upload
       const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
 
+      // Send to backend voice endpoint
       const response = await fetch(
         `http://localhost:3000/api/voice/update`,
         {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
           body: formData,
         }
       );
@@ -82,6 +101,7 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
       const data = await response.json();
       
       if (data.success) {
+        // Display parsed result to user
         setResult({
           status: 'success',
           item: data.item,
@@ -90,8 +110,8 @@ export default function VoiceRecorder({ onClose, token, onUpdate }) {
           type: data.type
         });
         setTranscript(data.transcript);
-        onUpdate?.();
-        setTimeout(onClose, 3000);
+        onUpdate?.();  // Refresh asset list
+        setTimeout(onClose, 3000);  // Auto-close after success
       } else {
         setError(data.error || 'Failed to process audio');
       }

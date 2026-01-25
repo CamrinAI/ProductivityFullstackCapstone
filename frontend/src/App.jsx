@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Mic, QrCode, AlertCircle, Zap, LogOut } from 'lucide-react';
+import { Package, Plus, Mic, QrCode, AlertCircle, Zap } from 'lucide-react';
 import AssetCard from './components/AssetCard';
 import VoiceRecorder from './components/VoiceRecorder';
-import LoginPage from './pages/LoginPage';
-import { AuthProvider, useAuth } from './context/AuthContext';
 
-function AppContent() {
-  const { user, token, logout, loading: authLoading } = useAuth();
+/**
+ * Trade-Tracker AI - Main Application Component
+ * 
+ * Displays asset and material inventory with Sonic-tier status system:
+ * - SONIC (Blue): Asset in good condition, recently checked in
+ * - TAILS (Yellow): Maintenance needed, moderate checkout duration
+ * - EGGMAN (Red): Danger, over 30 days checked out or marked unavailable
+ * 
+ * Features:
+ * - Real-time asset inventory with pagination
+ * - Voice-to-inventory updates via OpenAI
+ * - Asset checkout/checkin tracking
+ * - QR code generation for physical labeling
+ * - Material consumables management
+ */
+function App() {
   const [assets, setAssets] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,14 +26,11 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('assets');
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Fetch assets
+  // Fetch all assets from backend
   const fetchAssets = async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/assets`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(`http://localhost:3000/api/assets`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) setAssets(data.assets || data.items || []);
@@ -31,13 +40,10 @@ function AppContent() {
     setLoading(false);
   };
 
-  // Fetch materials
+  // Fetch all materials from backend
   const fetchMaterials = async () => {
-    if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/assets/materials`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(`http://localhost:3000/api/assets/materials`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) setMaterials(data.materials);
@@ -46,47 +52,23 @@ function AppContent() {
     }
   };
 
-  // Load data once when user is authenticated
+  // Initialize: load assets and materials on mount
   useEffect(() => {
-    if (token && user && !dataLoaded) {
+    if (!dataLoaded) {
       fetchAssets();
       fetchMaterials();
       setDataLoaded(true);
     }
-  }, [token, user, dataLoaded]);
+  }, [dataLoaded]);
 
-  // If still loading auth, show loading screen
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated, show login page
-  if (!user || !token) {
-    return <LoginPage />;
-  }
-
-  const counts = {
-    sonic: assets.filter(a => a.status === 'sonic').length,
-    tails: assets.filter(a => a.status === 'tails').length,
-    eggman: assets.filter(a => a.status === 'eggman').length,
-  };
-
-  // Simple pagination controls
+  // Pagination state and handler
   const [page, setPage] = useState(1);
   const [perPage] = useState(10);
 
   const fetchAssetsPaged = async (nextPage = page) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/assets?page=${nextPage}&per_page=${perPage}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(`http://localhost:3000/api/assets?page=${nextPage}&per_page=${perPage}`);
       const data = await res.json();
       if (data.success) {
         setAssets(data.assets || []);
@@ -97,19 +79,16 @@ function AppContent() {
     setLoading(false);
   };
 
+  // Re-fetch when page changes
   useEffect(() => {
-    if (token && user && dataLoaded) {
+    if (dataLoaded) {
       fetchAssetsPaged(page);
     }
   }, [page, perPage]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
-      {/* Header */}
+      {/* Navigation Header */}
       <header className="bg-black/50 border-b border-blue-500/20 backdrop-blur-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
@@ -119,10 +98,11 @@ function AppContent() {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   Trade-Tracker AI
                 </h1>
-                <p className="text-sm text-gray-400">Welcome, {user.username}! 👋</p>
+                <p className="text-sm text-gray-400">Asset Management System 📦</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Voice Update Button: Opens audio recorder modal */}
               <button
                 onClick={() => setShowVoice(true)}
                 className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-5 h-12 rounded-lg text-sm font-semibold"
@@ -130,39 +110,33 @@ function AppContent() {
                 <Mic className="w-4 h-4" />
                 Voice Update
               </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 h-12 rounded-lg text-sm font-semibold"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Stats */}
+      {/* Sonic Tier Status Dashboard */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Status Summary Cards: Categorize assets by health tier */}
         <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="sonic-card">
             <Zap className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{counts.sonic}</div>
+            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'sonic').length}</div>
             <p className="text-sm opacity-90">SONIC • Good</p>
           </div>
           <div className="tails-card">
             <AlertCircle className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{counts.tails}</div>
+            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'tails').length}</div>
             <p className="text-sm opacity-90">TAILS • Maintenance</p>
           </div>
           <div className="eggman-card">
             <AlertCircle className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{counts.eggman}</div>
+            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'eggman').length}</div>
             <p className="text-sm opacity-90">EGGMAN • Danger</p>
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tab Navigation: Switch between Assets and Materials views */}
         <div className="flex gap-4 mb-8 border-b border-gray-700">
           <button
             onClick={() => setActiveTab('assets')}
@@ -182,7 +156,7 @@ function AppContent() {
           </button>
         </div>
 
-        {/* Assets */}
+        {/* Assets Tab: Display asset cards with checkout/QR controls */}
         {activeTab === 'assets' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {loading ? (
@@ -191,10 +165,10 @@ function AppContent() {
               <p className="col-span-full text-gray-400">No assets. Create one to start.</p>
             ) : (
               assets.map(asset => (
-                <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} token={token} />
+                <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} />
               ))
             )}
-            {/* Pagination Controls */}
+            {/* Pagination Controls: Navigate through paginated assets */}
             <div className="col-span-full flex items-center justify-end gap-2 mt-4">
               <button
                 disabled={page <= 1}
@@ -213,7 +187,7 @@ function AppContent() {
           </div>
         )}
 
-        {/* Materials */}
+        {/* Materials Tab: Display consumable inventory with quantity adjustments */}
         {activeTab === 'materials' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {materials.length === 0 ? (
@@ -222,13 +196,14 @@ function AppContent() {
               materials.map(m => (
                 <div key={m.id} className={`p-4 rounded-lg border ${m.needs_reorder ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
                   <h4 className="font-semibold">{m.name}</h4>
-                  <p className="text-sm text-gray-400">Qty: {m.quantity} {m.unit}</p>                  <div className="mt-2 flex items-center gap-2">
+                  <p className="text-sm text-gray-400">Qty: {m.quantity} {m.unit}</p>                  {/* Quick quantity adjustment buttons for materials */}
+                  <div className="mt-2 flex items-center gap-2">
                     <button
                       onClick={async () => {
                         try {
                           await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) + 1) })
                           });
                           fetchMaterials();
@@ -243,7 +218,7 @@ function AppContent() {
                         try {
                           await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) - 1) })
                           });
                           fetchMaterials();
@@ -258,8 +233,7 @@ function AppContent() {
                         if (!confirm('Delete this material?')) return;
                         try {
                           await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${token}` }
+                            method: 'DELETE'
                           });
                           fetchMaterials();
                         } catch (e) {
@@ -275,10 +249,10 @@ function AppContent() {
         )}
       </div>
 
-      {/* Voice Modal */}
-      {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} token={token} />}
+      {/* Voice Recorder Modal: Triggered by Voice Update button */}
+      {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} />}
 
-      {/* Floating QR scan FAB */}
+      {/* Floating Action Button: QR Code Scanner (placeholder) */}
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => alert('QR scanning coming soon — connect to html5-qrcode here')}
@@ -291,10 +265,4 @@ function AppContent() {
   );
 }
 
-export default function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
+export default App;

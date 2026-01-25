@@ -1,43 +1,28 @@
-from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify, current_app, send_file
 from app import db
-from app.models import User, Asset, Material, CheckoutLog, AuditLog, AssetStatus
+from app.models import Asset, Material, CheckoutLog, AuditLog, AssetStatus
 from app.utils.error_handler import APIError, ValidationError
 from datetime import datetime
 import uuid
 import qrcode
 from io import BytesIO
 
+"""
+Asset Management Routes
+Handles CRUD operations for assets and materials, checkout/checkin tracking, and QR code generation.
+All endpoints are open (no auth required for MVP) to allow public asset tracking.
+"""
+
 assets_bp = Blueprint('assets', __name__, url_prefix='/api/assets')
 
-def get_user():
-    """Get current authenticated user from JWT."""
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    if not user:
-        raise APIError("User not found", 404)
-    return user
-
-
-def validate_ownership(resource, user):
-    if not resource:
-        raise APIError("Asset not found", 404)
-    if resource.owner_id != user.id:
-        raise APIError("Forbidden", 403)
-
-
-def get_owned_asset(asset_id, user):
-    asset = Asset.query.get(asset_id)
-    validate_ownership(asset, user)
-    return asset
+# ========== ASSET CRUD ENDPOINTS ==========
 
 @assets_bp.route('', methods=['GET'])
-@jwt_required()
 def list_assets():
-    user = get_user()
+    """Fetch all assets with pagination support."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    pagination = Asset.query.filter_by(owner_id=user.id).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = Asset.query.paginate(page=page, per_page=per_page, error_out=False)
     return jsonify({
         'success': True,
         'assets': [a.to_dict() for a in pagination.items],
@@ -48,33 +33,34 @@ def list_assets():
     }), 200
 
 @assets_bp.route('/<int:asset_id>', methods=['GET'])
-@jwt_required()
 def get_asset(asset_id):
-    """Return a single asset if owned by the current user."""
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Retrieve a single asset by ID with computed status tier."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('', methods=['POST'])
-@jwt_required()
 def create_asset():
-    user = get_user()
+    """Create a new asset with unique QR code UUID and optional serial number."""
     data = request.get_json()
     if not data or not data.get('name'):
         raise ValidationError("name required")
+    
+    # Validate serial number uniqueness if provided
     serial_number = data.get('serial_number')
     if serial_number:
         existing = Asset.query.filter_by(serial_number=serial_number).first()
         if existing:
             raise ValidationError("serial_number already exists")
     
+    # Create asset with unique QR code UUID for scanning
     asset = Asset(
-        owner_id=user.id,
         name=data['name'],
         asset_type=data.get('asset_type', 'equipment'),
         description=data.get('description'),
         serial_number=serial_number,
-        qr_code=str(uuid.uuid4()),
+        qr_code=str(uuid.uuid4()),  # Unique identifier for QR scanning
         location=data.get('location'),
         is_available=True
     )
@@ -82,23 +68,16 @@ def create_asset():
     db.session.commit()
     return jsonify({'success': True, 'asset': asset.to_dict()}), 201
 
-@assets_bp.route('/<int:asset_id>', methods=['GET'])
-@jwt_required()
-def get_asset(asset_id):
-    """Get single asset by id with ownership enforcement."""
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
-    return jsonify({'success': True, 'asset': asset.to_dict()}), 200
-
 @assets_bp.route('/<int:asset_id>', methods=['PUT'])
-@jwt_required()
 def update_asset(asset_id):
-    """Update asset details (name, location, description)."""
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Update asset fields (name, location, description). Serial number updates use separate endpoint."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
+    
     data = request.get_json() or {}
     
-    # Only allow selected fields to update
+    # Update permitted fields
     if 'name' in data:
         asset.name = data['name']
     if 'location' in data:
@@ -110,27 +89,31 @@ def update_asset(asset_id):
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('/<int:asset_id>', methods=['DELETE'])
-@jwt_required()
 def delete_asset(asset_id):
-    """Delete asset and its logs (cascade)."""
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Delete asset and cascade-delete all related checkout logs and audit logs."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
     db.session.delete(asset)
     db.session.commit()
     return jsonify({'success': True}), 200
 
+# ========== ASSET CHECKOUT/CHECKIN TRACKING ==========
+
 @assets_bp.route('/<int:asset_id>/checkout', methods=['POST'])
-@jwt_required()
 def checkout_asset(asset_id):
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Check out an asset: mark unavailable, record location, and log the checkout time."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
     
     data = request.get_json() or {}
+    # Create checkout log entry for audit trail
     checkout = CheckoutLog(
         asset_id=asset.id,
-        user_id=user.id,
         location_checkout=data.get('location', 'unknown')
     )
+    # Update asset status
     asset.is_available = False
     asset.checkout_date = datetime.utcnow()
     asset.location = data.get('location', 'unknown')
@@ -140,29 +123,36 @@ def checkout_asset(asset_id):
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('/<int:asset_id>/checkin', methods=['POST'])
-@jwt_required()
 def checkin_asset(asset_id):
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Check in an asset: mark available, clear checkout date, and close the checkout log entry."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
     
     data = request.get_json() or {}
+    # Find the open checkout log and close it
     checkout = CheckoutLog.query.filter_by(asset_id=asset.id, checkin_time=None).first()
     if checkout:
         checkout.checkin_time = datetime.utcnow()
         checkout.location_checkin = data.get('location', 'warehouse')
     
+    # Update asset status
     asset.is_available = True
     asset.checkout_date = None
     asset.location = data.get('location', 'warehouse')
     db.session.commit()
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
+# ========== QR CODE & SERIAL NUMBER MANAGEMENT ==========
+
 @assets_bp.route('/<int:asset_id>/qr', methods=['GET'])
-@jwt_required()
 def generate_qr(asset_id):
-    user = get_user()
-    asset = get_owned_asset(asset_id, user)
+    """Generate and return a PNG QR code for asset identification. Links to asset UUID."""
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        raise APIError("Asset not found", 404)
     
+    # Generate QR code from asset's unique UUID
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(asset.qr_code)
     qr.make(fit=True)
@@ -171,14 +161,12 @@ def generate_qr(asset_id):
     img.save(img_io, 'PNG')
     img_io.seek(0)
     
-    from flask import send_file
     return send_file(img_io, mimetype='image/png', as_attachment=True, download_name=f'asset_{asset.id}_qr.png')
 
 @assets_bp.route('/<int:asset_id>/serial', methods=['POST'])
-@jwt_required()
 def update_serial(asset_id):
-    user = get_user()
-    asset = Asset.query.filter_by(id=asset_id, owner_id=user.id).first()
+    """Update asset serial number. Serial numbers must be unique across all assets."""
+    asset = Asset.query.get(asset_id)
     if not asset:
         raise APIError("Asset not found", 404)
 
@@ -195,23 +183,22 @@ def update_serial(asset_id):
     db.session.commit()
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
+# ========== MATERIAL INVENTORY MANAGEMENT ==========
+
 @assets_bp.route('/materials', methods=['GET'])
-@jwt_required()
 def list_materials():
-    user = get_user()
-    materials = Material.query.filter_by(owner_id=user.id).all()
+    """Fetch all materials (consumables) tracked in inventory."""
+    materials = Material.query.all()
     return jsonify({'success': True, 'materials': [m.to_dict() for m in materials]}), 200
 
 @assets_bp.route('/materials', methods=['POST'])
-@jwt_required()
 def create_material():
-    user = get_user()
+    """Create a new material with quantity and reorder threshold."""
     data = request.get_json()
     if not data or not data.get('name'):
         raise ValidationError("name required")
     
     material = Material(
-        owner_id=user.id,
         name=data['name'],
         unit=data.get('unit', 'box'),
         quantity=data.get('quantity', 0),
@@ -222,11 +209,9 @@ def create_material():
     return jsonify({'success': True, 'material': material.to_dict()}), 201
 
 @assets_bp.route('/materials/<int:material_id>', methods=['PUT'])
-@jwt_required()
 def update_material(material_id):
-    """Update material fields like quantity, name, unit, min_stock."""
-    user = get_user()
-    material = Material.query.filter_by(id=material_id, owner_id=user.id).first()
+    """Update material attributes: name, unit, quantity, and reorder threshold."""
+    material = Material.query.get(material_id)
     if not material:
         raise APIError("Material not found", 404)
     data = request.get_json() or {}
@@ -244,11 +229,9 @@ def update_material(material_id):
     return jsonify({'success': True, 'material': material.to_dict()}), 200
 
 @assets_bp.route('/materials/<int:material_id>', methods=['DELETE'])
-@jwt_required()
 def delete_material(material_id):
-    """Delete a material."""
-    user = get_user()
-    material = Material.query.filter_by(id=material_id, owner_id=user.id).first()
+    """Delete a material from inventory."""
+    material = Material.query.get(material_id)
     if not material:
         raise APIError("Material not found", 404)
     db.session.delete(material)

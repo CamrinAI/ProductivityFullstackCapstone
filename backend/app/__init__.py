@@ -6,17 +6,22 @@ from flask_jwt_extended import JWTManager
 import logging
 import os
 
+# Initialize database, migrations, and JWT extensions (will be attached to app in create_app)
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
 
 def create_app(config_name='development'):
+    """
+    Flask application factory.
+    Initializes the Flask app with all extensions, blueprints, and configurations.
+    """
     app = Flask(__name__)
     
     from app.config import config
     app.config.from_object(config.get(config_name, config['development']))
     
-    # Set JWT secret key
+    # Initialize database connection, migrations, JWT auth, and CORS for frontend
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET', 'dev-jwt-secret-change-in-production')
     
     db.init_app(app)
@@ -24,6 +29,7 @@ def create_app(config_name='development'):
     jwt.init_app(app)
     CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
     
+    # Register route blueprints: auth, assets management, and voice processing
     with app.app_context():
         from app.routes.auth_routes import auth_bp
         from app.routes.assets_routes import assets_bp

@@ -10,8 +10,7 @@ Professional full-stack asset management platform for electricians, plumbers, an
 - **Location-Based Alerts**: Get alerted when assets are far from job site
 - **Material Management**: Track consumables with min-stock levels
 - **Checkout/Checkin Logs**: Full audit trail for all asset movements
-- **Auth Guard**: Header-based user identity (`X-User-ID`) with optional bearer token (`Authorization: Bearer <token>`) to protect owner-only routes
-- **Geofencing (planned)**: Compare navigator.geolocation to stored job_site coords to trigger alerts when outside permitted radius
+- **Full CRUD Operations**: Create, Read, Update, Delete for Assets and Materials
 
 ## 🛠 Tech Stack
 
@@ -87,15 +86,20 @@ App runs on http://localhost:5173
 
 | Method | Path | Headers | Body | Notes |
 | --- | --- | --- | --- | --- |
-| GET | /api/assets?page=&per_page= | X-User-ID, [Authorization Bearer optional] | - | Paginated list of user-owned assets |
-| POST | /api/assets | X-User-ID | `{ "name", "asset_type?", "description?", "location?", "serial_number?" }` | Creates asset with unique serial (if provided) |
-| POST | /api/assets/<id>/checkout | X-User-ID | `{ "location": "Job Site" }` | Marks asset checked out, logs location |
-| POST | /api/assets/<id>/checkin | X-User-ID | `{ "location": "Warehouse" }` | Marks asset checked in |
-| GET | /api/assets/<id>/qr | X-User-ID | - | Downloads QR PNG for asset |
-| POST | /api/assets/<id>/serial | X-User-ID | `{ "serial_number": "ABC-123" }` | Updates/sets serial number (unique) |
-| GET | /api/assets/materials | X-User-ID | - | Lists materials |
-| POST | /api/assets/materials | X-User-ID | `{ "name", "unit?", "quantity?", "min_stock?" }` | Creates material |
-| POST | /api/voice/update | X-User-ID + multipart/form-data | `audio` file | Voice-to-inventory update (Whisper + GPT-4o) |
+| GET | /api/assets?page=&per_page= | - | - | Paginated list of all assets |
+| POST | /api/assets | - | `{ "name", "asset_type?", "description?", "location?", "serial_number?" }` | Creates asset with unique serial (if provided) |
+| GET | /api/assets/<id> | - | - | Get single asset by ID |
+| PUT | /api/assets/<id> | - | `{ "name?", "location?", "description?" }` | Update asset fields |
+| DELETE | /api/assets/<id> | - | - | Delete asset |
+| POST | /api/assets/<id>/checkout | - | `{ "location": "Job Site" }` | Marks asset checked out, logs location |
+| POST | /api/assets/<id>/checkin | - | `{ "location": "Warehouse" }` | Marks asset checked in |
+| GET | /api/assets/<id>/qr | - | - | Downloads QR PNG for asset |
+| POST | /api/assets/<id>/serial | - | `{ "serial_number": "ABC-123" }` | Updates/sets serial number (unique) |
+| GET | /api/assets/materials | - | - | Lists all materials |
+| POST | /api/assets/materials | - | `{ "name", "unit?", "quantity?", "min_stock?" }` | Creates material |
+| PUT | /api/assets/materials/<id> | - | `{ "name?", "unit?", "quantity?", "min_stock?" }` | Update material |
+| DELETE | /api/assets/materials/<id> | - | - | Delete material |
+| POST | /api/voice/update | multipart/form-data | `audio` file | Voice-to-inventory update (Whisper + GPT-4o) |
 
 Create `.env` in backend/:
 
@@ -185,10 +189,9 @@ Body: audio file + user_id
 
 ## 🔐 Security Features
 
-- Ownership enforcement on all resources
-- User ID validation on every request
 - Error handling with sanitized messages
 - CORS enabled for frontend
+- Input validation on all endpoints
 
 ## 📝 API Endpoints
 
@@ -298,7 +301,24 @@ python run.py
 - Check microphone permissions
 - Ensure audio format is webm/wav
 
-## 📄 License
+## � Future Improvements
+
+### Multi-User Authentication & Role-Based Access
+- **Worker accounts**: Basic asset checkout/checkin with limited permissions
+- **Management accounts**: Full CRUD + analytics dashboard with elevated privileges
+- **JWT token-based auth**: Secure session management with refresh tokens
+- **Ownership enforcement**: Filter assets/materials by `owner_id` to ensure data isolation
+- **Role gates**: Decorator-based route protection (`@manager_required`, `@worker_or_above`)
+- **Team collaboration**: Share assets across organization with permission levels
+
+### Additional Enhancements
+- **Geofencing**: GPS-based alerts when assets leave job site radius
+- **Mobile app**: Native iOS/Android with offline-first sync
+- **Advanced analytics**: Cost tracking, utilization reports, depreciation calculations
+- **Barcode scanner**: Alternative to QR codes for legacy equipment
+- **Notification system**: Email/SMS alerts for missing assets or low stock
+
+## �📄 License
 
 MIT
 
