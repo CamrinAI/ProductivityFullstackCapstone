@@ -77,6 +77,32 @@ function AppContent() {
     eggman: assets.filter(a => a.status === 'eggman').length,
   };
 
+  // Simple pagination controls
+  const [page, setPage] = useState(1);
+  const [perPage] = useState(10);
+
+  const fetchAssetsPaged = async (nextPage = page) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:3000/api/assets?page=${nextPage}&per_page=${perPage}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAssets(data.assets || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch assets (paged):', e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (token && user && dataLoaded) {
+      fetchAssetsPaged(page);
+    }
+  }, [page, perPage]);
+
   const handleLogout = async () => {
     await logout();
   };
@@ -168,6 +194,22 @@ function AppContent() {
                 <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} token={token} />
               ))
             )}
+            {/* Pagination Controls */}
+            <div className="col-span-full flex items-center justify-end gap-2 mt-4">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(Math.max(1, page - 1))}
+                className="px-3 py-2 border border-gray-700 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(page + 1)}
+                className="px-3 py-2 border border-gray-700 rounded"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
 
@@ -180,8 +222,53 @@ function AppContent() {
               materials.map(m => (
                 <div key={m.id} className={`p-4 rounded-lg border ${m.needs_reorder ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
                   <h4 className="font-semibold">{m.name}</h4>
-                  <p className="text-sm text-gray-400">Qty: {m.quantity} {m.unit}</p>
-                </div>
+                  <p className="text-sm text-gray-400">Qty: {m.quantity} {m.unit}</p>                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) + 1) })
+                          });
+                          fetchMaterials();
+                        } catch (e) {
+                          console.error('Increase qty failed', e);
+                        }
+                      }}
+                      className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
+                    >+1</button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) - 1) })
+                          });
+                          fetchMaterials();
+                        } catch (e) {
+                          console.error('Decrease qty failed', e);
+                        }
+                      }}
+                      className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs"
+                    >-1</button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Delete this material?')) return;
+                        try {
+                          await fetch(`http://localhost:3000/api/assets/materials/${m.id}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          fetchMaterials();
+                        } catch (e) {
+                          console.error('Delete material failed', e);
+                        }
+                      }}
+                      className="ml-auto px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
+                    >Delete</button>
+                  </div>                </div>
               ))
             )}
           </div>

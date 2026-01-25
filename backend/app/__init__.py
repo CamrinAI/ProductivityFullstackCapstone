@@ -22,7 +22,7 @@ def create_app(config_name='development'):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    CORS(app, supports_credentials=True)
+    CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
     
     with app.app_context():
         from app.routes.auth_routes import auth_bp

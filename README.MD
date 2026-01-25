@@ -212,16 +212,44 @@ Body: audio file + user_id
 
 ## 🧪 Testing
 
+### Quick Start
 ```bash
-# Run Flask development server
+# Backend (new terminal)
 cd backend
-source .venv/bin/activate
-python run.py
+python3 run.py
 
-# Test assets endpoint
-curl -X GET "http://localhost:3000/api/assets?user_id=1" \
-  -H "X-User-ID: 1"
+# Frontend (new terminal)
+cd frontend
+npm run dev
 ```
+
+### Curl Test Suite
+A minimal script is available at `scripts/curl_tests.sh`.
+```bash
+bash scripts/curl_tests.sh
+```
+It will:
+- Register two users and capture JWTs
+- Create an asset for User A
+- Attempt access with User B (expects 403/404)
+- Create/update/delete material
+- Verify pagination
+- Delete asset
+
+### Ownership Gate Manual Test
+```bash
+# Assume TOKEN_A (owner) and TOKEN_B (other user)
+# Get asset by id (works for owner, fails for other)
+curl -i http://localhost:3000/api/assets/<id> -H "Authorization: Bearer $TOKEN_A"
+curl -i http://localhost:3000/api/assets/<id> -H "Authorization: Bearer $TOKEN_B"
+```
+
+### Sonic Tier Logic Check
+- Set `checkout_date` > 30 days ago for an asset, refresh UI, expect Eggman badge.
+
+### Pagination Verification
+Open DevTools Network and confirm `/api/assets?page=1&per_page=10`.
+Use Next/Previous buttons in the Assets tab.
 
 ## 📚 Key Implementation Notes
 

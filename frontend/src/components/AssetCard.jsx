@@ -96,11 +96,56 @@ export default function AssetCard({ asset, onRefresh, token }) {
     setLocalStatus(nextStatus);
   };
 
+  const [locationInput, setLocationInput] = useState(asset.location || '');
+  const updateLocation = async () => {
+    try {
+      await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ location: locationInput })
+      });
+      onRefresh();
+    } catch (e) {
+      console.error('Update location failed', e);
+    }
+  };
+  const deleteAsset = async () => {
+    if (!confirm('Delete this asset?')) return;
+    try {
+      await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      onRefresh();
+    } catch (e) {
+      console.error('Delete asset failed', e);
+    }
+  };
+
   return (
     <div className={tierColor}>
       <h3 className="font-bold text-lg mb-2">{asset.name}</h3>
       <p className="text-sm text-gray-400 mb-4">{tierBadge}</p>
-      {asset.location && <p className="text-sm text-gray-400">📍 {asset.location}</p>}
+      <div className="flex items-center gap-2">
+        <input
+          value={locationInput}
+          onChange={(e) => setLocationInput(e.target.value)}
+          placeholder="Location"
+          className="flex-1 bg-gray-900/60 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500"
+        />
+        <button
+          onClick={updateLocation}
+          className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+        >
+          Update
+        </button>
+        <button
+          onClick={deleteAsset}
+          className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm"
+        >
+          Delete
+        </button>
+      </div>
       <div className="mt-3 space-y-2">
         <div className="flex items-center gap-2">
           <input

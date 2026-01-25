@@ -46,8 +46,15 @@ class Asset(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Ensure logs are removed when asset is deleted
+    checkout_logs = db.relationship('CheckoutLog', backref='asset', cascade='all, delete-orphan')
+    audit_logs = db.relationship('AuditLog', backref='asset', cascade='all, delete-orphan')
+    
     @hybrid_property
     def status_tier(self):
+        # Enhanced logic: if marked unavailable, show eggman
+        if self.is_available is False:
+            return AssetStatus.EGGMAN.value
         if not self.checkout_date:
             return AssetStatus.SONIC.value
         days = (datetime.utcnow() - self.checkout_date).days

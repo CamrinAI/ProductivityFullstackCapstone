@@ -47,6 +47,14 @@ def list_assets():
         'per_page': pagination.per_page
     }), 200
 
+@assets_bp.route('/<int:asset_id>', methods=['GET'])
+@jwt_required()
+def get_asset(asset_id):
+    """Return a single asset if owned by the current user."""
+    user = get_user()
+    asset = get_owned_asset(asset_id, user)
+    return jsonify({'success': True, 'asset': asset.to_dict()}), 200
+
 @assets_bp.route('', methods=['POST'])
 @jwt_required()
 def create_asset():
@@ -73,6 +81,43 @@ def create_asset():
     db.session.add(asset)
     db.session.commit()
     return jsonify({'success': True, 'asset': asset.to_dict()}), 201
+
+@assets_bp.route('/<int:asset_id>', methods=['GET'])
+@jwt_required()
+def get_asset(asset_id):
+    """Get single asset by id with ownership enforcement."""
+    user = get_user()
+    asset = get_owned_asset(asset_id, user)
+    return jsonify({'success': True, 'asset': asset.to_dict()}), 200
+
+@assets_bp.route('/<int:asset_id>', methods=['PUT'])
+@jwt_required()
+def update_asset(asset_id):
+    """Update asset details (name, location, description)."""
+    user = get_user()
+    asset = get_owned_asset(asset_id, user)
+    data = request.get_json() or {}
+    
+    # Only allow selected fields to update
+    if 'name' in data:
+        asset.name = data['name']
+    if 'location' in data:
+        asset.location = data['location']
+    if 'description' in data:
+        asset.description = data['description']
+    
+    db.session.commit()
+    return jsonify({'success': True, 'asset': asset.to_dict()}), 200
+
+@assets_bp.route('/<int:asset_id>', methods=['DELETE'])
+@jwt_required()
+def delete_asset(asset_id):
+    """Delete asset and its logs (cascade)."""
+    user = get_user()
+    asset = get_owned_asset(asset_id, user)
+    db.session.delete(asset)
+    db.session.commit()
+    return jsonify({'success': True}), 200
 
 @assets_bp.route('/<int:asset_id>/checkout', methods=['POST'])
 @jwt_required()
@@ -175,3 +220,37 @@ def create_material():
     db.session.add(material)
     db.session.commit()
     return jsonify({'success': True, 'material': material.to_dict()}), 201
+
+@assets_bp.route('/materials/<int:material_id>', methods=['PUT'])
+@jwt_required()
+def update_material(material_id):
+    """Update material fields like quantity, name, unit, min_stock."""
+    user = get_user()
+    material = Material.query.filter_by(id=material_id, owner_id=user.id).first()
+    if not material:
+        raise APIError("Material not found", 404)
+    data = request.get_json() or {}
+    
+    if 'name' in data:
+        material.name = data['name']
+    if 'unit' in data:
+        material.unit = data['unit']
+    if 'quantity' in data:
+        material.quantity = int(data['quantity'])
+    if 'min_stock' in data:
+        material.min_stock = int(data['min_stock'])
+    
+    db.session.commit()
+    return jsonify({'success': True, 'material': material.to_dict()}), 200
+
+@assets_bp.route('/materials/<int:material_id>', methods=['DELETE'])
+@jwt_required()
+def delete_material(material_id):
+    """Delete a material."""
+    user = get_user()
+    material = Material.query.filter_by(id=material_id, owner_id=user.id).first()
+    if not material:
+        raise APIError("Material not found", 404)
+    db.session.delete(material)
+    db.session.commit()
+    return jsonify({'success': True}), 200
