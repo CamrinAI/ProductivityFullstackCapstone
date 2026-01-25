@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import User, Asset, Material, CheckoutLog, AuditLog, AssetStatus
 from app.utils.error_handler import APIError, ValidationError
@@ -10,20 +11,9 @@ from io import BytesIO
 assets_bp = Blueprint('assets', __name__, url_prefix='/api/assets')
 
 def get_user():
-    # Require header-based identity; optional bearer token enforcement if configured
-    auth_header = request.headers.get('Authorization', '')
-    bearer_token = current_app.config.get('API_BEARER_TOKEN')
-    if bearer_token:
-        if not auth_header.startswith('Bearer '):
-            raise APIError("Unauthorized", 401)
-        token = auth_header.split(' ', 1)[1].strip()
-        if token != bearer_token:
-            raise APIError("Unauthorized", 401)
-
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise ValidationError("User ID header required")
-    user = User.query.get(int(user_id))
+    """Get current authenticated user from JWT."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     if not user:
         raise APIError("User not found", 404)
     return user
@@ -42,6 +32,7 @@ def get_owned_asset(asset_id, user):
     return asset
 
 @assets_bp.route('', methods=['GET'])
+@jwt_required()
 def list_assets():
     user = get_user()
     page = request.args.get('page', 1, type=int)
@@ -57,6 +48,7 @@ def list_assets():
     }), 200
 
 @assets_bp.route('', methods=['POST'])
+@jwt_required()
 def create_asset():
     user = get_user()
     data = request.get_json()
@@ -83,6 +75,7 @@ def create_asset():
     return jsonify({'success': True, 'asset': asset.to_dict()}), 201
 
 @assets_bp.route('/<int:asset_id>/checkout', methods=['POST'])
+@jwt_required()
 def checkout_asset(asset_id):
     user = get_user()
     asset = get_owned_asset(asset_id, user)
@@ -102,6 +95,7 @@ def checkout_asset(asset_id):
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('/<int:asset_id>/checkin', methods=['POST'])
+@jwt_required()
 def checkin_asset(asset_id):
     user = get_user()
     asset = get_owned_asset(asset_id, user)
@@ -119,6 +113,7 @@ def checkin_asset(asset_id):
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('/<int:asset_id>/qr', methods=['GET'])
+@jwt_required()
 def generate_qr(asset_id):
     user = get_user()
     asset = get_owned_asset(asset_id, user)
@@ -135,6 +130,7 @@ def generate_qr(asset_id):
     return send_file(img_io, mimetype='image/png', as_attachment=True, download_name=f'asset_{asset.id}_qr.png')
 
 @assets_bp.route('/<int:asset_id>/serial', methods=['POST'])
+@jwt_required()
 def update_serial(asset_id):
     user = get_user()
     asset = Asset.query.filter_by(id=asset_id, owner_id=user.id).first()
@@ -155,12 +151,14 @@ def update_serial(asset_id):
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
 @assets_bp.route('/materials', methods=['GET'])
+@jwt_required()
 def list_materials():
     user = get_user()
     materials = Material.query.filter_by(owner_id=user.id).all()
     return jsonify({'success': True, 'materials': [m.to_dict() for m in materials]}), 200
 
 @assets_bp.route('/materials', methods=['POST'])
+@jwt_required()
 def create_material():
     user = get_user()
     data = request.get_json()

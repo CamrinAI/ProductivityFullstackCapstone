@@ -1,51 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Mic, QrCode, AlertCircle, Zap } from 'lucide-react';
+import { Package, Plus, Mic, QrCode, AlertCircle, Zap, LogOut } from 'lucide-react';
 import AssetCard from './components/AssetCard';
 import VoiceRecorder from './components/VoiceRecorder';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export default function App() {
+function AppContent() {
+  const { user, token, logout, loading: authLoading } = useAuth();
   const [assets, setAssets] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [activeTab, setActiveTab] = useState('assets');
-  const userId = "1";
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  useEffect(() => {
-    fetchAssets();
-    fetchMaterials();
-  }, []);
-
+  // Fetch assets
   const fetchAssets = async () => {
+    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch(`http://localhost:3000/api/assets`, {
-        headers: { 'X-User-ID': userId }
+        headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) setAssets(data.assets || data.items || []);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch assets:', e);
     }
     setLoading(false);
   };
 
+  // Fetch materials
   const fetchMaterials = async () => {
+    if (!token) return;
     try {
       const res = await fetch(`http://localhost:3000/api/assets/materials`, {
-        headers: { 'X-User-ID': userId }
+        headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) setMaterials(data.materials);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch materials:', e);
     }
   };
+
+  // Load data once when user is authenticated
+  useEffect(() => {
+    if (token && user && !dataLoaded) {
+      fetchAssets();
+      fetchMaterials();
+      setDataLoaded(true);
+    }
+  }, [token, user, dataLoaded]);
+
+  // If still loading auth, show loading screen
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show login page
+  if (!user || !token) {
+    return <LoginPage />;
+  }
 
   const counts = {
     sonic: assets.filter(a => a.status === 'sonic').length,
     tails: assets.filter(a => a.status === 'tails').length,
     eggman: assets.filter(a => a.status === 'eggman').length,
+  };
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -56,17 +89,29 @@ export default function App() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Package className="w-8 h-8 text-blue-400" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                Trade-Tracker AI
-              </h1>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  Trade-Tracker AI
+                </h1>
+                <p className="text-sm text-gray-400">Welcome, {user.username}! 👋</p>
+              </div>
             </div>
-            <button
-              onClick={() => setShowVoice(true)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-5 h-12 rounded-lg text-sm font-semibold"
-            >
-              <Mic className="w-4 h-4" />
-              Voice Update
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowVoice(true)}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-5 h-12 rounded-lg text-sm font-semibold"
+              >
+                <Mic className="w-4 h-4" />
+                Voice Update
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 h-12 rounded-lg text-sm font-semibold"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -120,7 +165,7 @@ export default function App() {
               <p className="col-span-full text-gray-400">No assets. Create one to start.</p>
             ) : (
               assets.map(asset => (
-                <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} userId={userId} />
+                <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} token={token} />
               ))
             )}
           </div>
@@ -144,7 +189,7 @@ export default function App() {
       </div>
 
       {/* Voice Modal */}
-      {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} userId={userId} />}
+      {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} token={token} />}
 
       {/* Floating QR scan FAB */}
       <div className="fixed bottom-6 right-6 z-50">
@@ -156,5 +201,13 @@ export default function App() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

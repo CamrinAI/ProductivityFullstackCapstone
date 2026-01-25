@@ -1,5 +1,6 @@
 """Voice-to-inventory routes for Trade-Tracker."""
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import User, Asset, Material
 from app.utils.error_handler import APIError, ValidationError
@@ -9,17 +10,15 @@ from datetime import datetime
 voice_bp = Blueprint('voice', __name__, url_prefix='/api/voice')
 
 def get_user():
-    """Extract and validate user from request."""
-    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
-    if not user_id:
-        raise ValidationError("User ID required in header or query param")
-    
-    user = User.query.get(int(user_id))
+    """Extract and validate user from JWT."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     if not user:
         raise APIError("User not found", 404)
     return user
 
 @voice_bp.route('/update', methods=['POST'])
+@jwt_required()
 def voice_update():
     """
     Voice-to-inventory endpoint.
@@ -128,6 +127,7 @@ def voice_update():
         return jsonify({'success': False, 'error': f"Voice processing failed: {str(e)}"}), 500
 
 @voice_bp.route('/transcript', methods=['POST'])
+@jwt_required()
 def get_transcript_only():
     """Test endpoint: just transcribe without parsing."""
     try:

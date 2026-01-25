@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic, X, Send, Check, AlertCircle } from 'lucide-react';
 
-export default function VoiceRecorder({ onClose, userId, onUpdate }) {
+export default function VoiceRecorder({ onClose, token, onUpdate }) {
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [result, setResult] = useState(null);
@@ -71,10 +71,10 @@ export default function VoiceRecorder({ onClose, userId, onUpdate }) {
       formData.append('audio', audioBlob, 'recording.webm');
 
       const response = await fetch(
-        `http://localhost:3000/api/voice/update?user_id=${userId}`,
+        `http://localhost:3000/api/voice/update`,
         {
           method: 'POST',
-          headers: { 'X-User-ID': userId },
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData,
         }
       );

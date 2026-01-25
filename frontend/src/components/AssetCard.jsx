@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, AlertTriangle, Save } from 'lucide-react';
 
-export default function AssetCard({ asset, onRefresh, userId }) {
+export default function AssetCard({ asset, onRefresh, token }) {
   const [loading, setLoading] = useState(false);
   const [serial, setSerial] = useState(asset.serial_number || '');
   const [savingSerial, setSavingSerial] = useState(false);
@@ -17,9 +17,9 @@ export default function AssetCard({ asset, onRefresh, userId }) {
   const handleCheckout = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkout?user_id=${userId}`, {
+      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ location: 'Job Site' }),
       });
       onRefresh();
@@ -35,9 +35,9 @@ export default function AssetCard({ asset, onRefresh, userId }) {
   const handleCheckin = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkin?user_id=${userId}`, {
+      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ location: 'Warehouse' }),
       });
       onRefresh();
@@ -54,7 +54,9 @@ export default function AssetCard({ asset, onRefresh, userId }) {
 
   const handleDownloadQR = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/assets/${asset.id}/qr?user_id=${userId}`);
+      const res = await fetch(`http://localhost:3000/api/assets/${asset.id}/qr`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error('Failed to download QR');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -76,9 +78,9 @@ export default function AssetCard({ asset, onRefresh, userId }) {
     }
     setSavingSerial(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/serial?user_id=${userId}`, {
+      await fetch(`http://localhost:3000/api/assets/${asset.id}/serial`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ serial_number: serial.trim() }),
       });
       onRefresh();
