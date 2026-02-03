@@ -1,15 +1,12 @@
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify
 from app import db
-from app.models import Asset, Material, CheckoutLog, AuditLog, AssetStatus
+from app.models import Asset, Material, CheckoutLog, AuditLog
 from app.utils.error_handler import APIError, ValidationError
 from datetime import datetime
-import uuid
-import qrcode
-from io import BytesIO
 
 """
 Asset Management Routes
-Handles CRUD operations for assets and materials, checkout/checkin tracking, and QR code generation.
+Handles CRUD operations for assets and materials, checkout/checkin tracking.
 All endpoints are open (no auth required for MVP) to allow public asset tracking.
 """
 
@@ -54,15 +51,15 @@ def create_asset():
         if existing:
             raise ValidationError("serial_number already exists")
     
-    # Create asset with unique QR code UUID for scanning
+    # Create asset
     asset = Asset(
         name=data['name'],
         asset_type=data.get('asset_type', 'equipment'),
         description=data.get('description'),
         serial_number=serial_number,
-        qr_code=str(uuid.uuid4()),  # Unique identifier for QR scanning
         location=data.get('location'),
-        is_available=True
+        is_available=True,
+        status='available'
     )
     db.session.add(asset)
     db.session.commit()
@@ -143,25 +140,7 @@ def checkin_asset(asset_id):
     db.session.commit()
     return jsonify({'success': True, 'asset': asset.to_dict()}), 200
 
-# ========== QR CODE & SERIAL NUMBER MANAGEMENT ==========
-
-@assets_bp.route('/<int:asset_id>/qr', methods=['GET'])
-def generate_qr(asset_id):
-    """Generate and return a PNG QR code for asset identification. Links to asset UUID."""
-    asset = Asset.query.get(asset_id)
-    if not asset:
-        raise APIError("Asset not found", 404)
-    
-    # Generate QR code from asset's unique UUID
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(asset.qr_code)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    img_io = BytesIO()
-    img.save(img_io, 'PNG')
-    img_io.seek(0)
-    
-    return send_file(img_io, mimetype='image/png', as_attachment=True, download_name=f'asset_{asset.id}_qr.png')
+# ========== SERIAL NUMBER MANAGEMENT ==========
 
 @assets_bp.route('/<int:asset_id>/serial', methods=['POST'])
 def update_serial(asset_id):

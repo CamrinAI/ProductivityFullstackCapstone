@@ -24,14 +24,14 @@ def create_app(config_name='development'):
     migrate.init_app(app, db)
     CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
     
-    # Register route blueprints: assets management and voice processing
+    # Register route blueprints: assets management and authentication
     with app.app_context():
         from app.routes.assets_routes import assets_bp
-        from app.routes.voice_routes import voice_bp
+        from app.routes.auth_routes import auth_bp
         from app.utils.error_handler import register_error_handlers
         
         app.register_blueprint(assets_bp)
-        app.register_blueprint(voice_bp)
+        app.register_blueprint(auth_bp)
         register_error_handlers(app)
         
         app.logger.info('✅ Flask app initialized')

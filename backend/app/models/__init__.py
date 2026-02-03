@@ -1,18 +1,10 @@
 from datetime import datetime
-from enum import Enum
-from sqlalchemy.ext.hybrid import hybrid_property
 from app import db
 
 """
 Database models for Trade-Tracker asset management system.
 Represents: Users, Assets (tools/equipment), Materials (consumables), and audit logs.
 """
-
-class AssetStatus(Enum):
-    """Asset reliability tiers based on Sonic theme - status determined by checkout duration"""
-    SONIC = "sonic"   # Good condition (< 7 days checked out)
-    TAILS = "tails"   # Maintenance due (7-30 days checked out)
-    EGGMAN = "eggman" # Danger/missing (> 30 days checked out or unavailable)
 
 class User(db.Model):
     """
@@ -50,12 +42,11 @@ class Asset(db.Model):
     asset_type = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     serial_number = db.Column(db.String(100), unique=True)
-    qr_code = db.Column(db.String(255), unique=True, nullable=False)  # UUID for QR scanning
     location = db.Column(db.String(255))
-    status = db.Column(db.String(50), default=AssetStatus.SONIC.value)
+    status = db.Column(db.String(50), default='available')
     checkout_date = db.Column(db.DateTime)  # When asset was last checked out
     is_available = db.Column(db.Boolean, default=True)
-    last_scanned = db.Column(db.DateTime)
+    checked_out_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # Track who has the tool
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -63,33 +54,16 @@ class Asset(db.Model):
     checkout_logs = db.relationship('CheckoutLog', backref='asset', cascade='all, delete-orphan')
     audit_logs = db.relationship('AuditLog', backref='asset', cascade='all, delete-orphan')
     
-    @hybrid_property
-    def status_tier(self):
-        """
-        Calculate asset status tier based on availability and checkout duration.
-        Returns SONIC (good) -> TAILS (maintenance) -> EGGMAN (danger) based on time.
-        """
-        if self.is_available is False:
-            return AssetStatus.EGGMAN.value
-        if not self.checkout_date:
-            return AssetStatus.SONIC.value
-        days = (datetime.utcnow() - self.checkout_date).days
-        if days < 7:
-            return AssetStatus.SONIC.value
-        if days < 30:
-            return AssetStatus.TAILS.value
-        return AssetStatus.EGGMAN.value
-    
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'asset_type': self.asset_type,
             'serial_number': self.serial_number,
-            'qr_code': self.qr_code,
             'location': self.location,
-            'status': self.status_tier,
+            'status': self.status,
             'is_available': self.is_available,
+            'checked_out_by': self.checked_out_by,
             'checkout_date': self.checkout_date.isoformat() if self.checkout_date else None,
         }
 

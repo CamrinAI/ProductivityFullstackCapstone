@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Mic, QrCode, AlertCircle, Zap } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
 import AssetCard from './components/AssetCard';
-import VoiceRecorder from './components/VoiceRecorder';
 
 /**
- * Trade-Tracker AI - Main Application Component
+ * Trade Tracker - Main Application Component
  * 
- * Displays asset and material inventory with Sonic-tier status system:
- * - SONIC (Blue): Asset in good condition, recently checked in
- * - TAILS (Yellow): Maintenance needed, moderate checkout duration
- * - EGGMAN (Red): Danger, over 30 days checked out or marked unavailable
+ * Job site asset and material management system
  * 
  * Features:
  * - Real-time asset inventory with pagination
- * - Voice-to-inventory updates via OpenAI
+ * - Search and filter tools
  * - Asset checkout/checkin tracking
- * - QR code generation for physical labeling
  * - Material consumables management
+ * - Role-based access control (Worker, Foreman, Superintendent)
  */
 function App() {
   const [assets, setAssets] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showVoice, setShowVoice] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('assets');
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -96,46 +92,29 @@ function App() {
               <Package className="w-8 h-8 text-blue-400" />
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  Trade-Tracker AI
+                  Trade Tracker
                 </h1>
-                <p className="text-sm text-gray-400">Asset Management System 📦</p>
+                <p className="text-sm text-gray-400">Digital Tool Crib</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Voice Update Button: Opens audio recorder modal */}
-              <button
-                onClick={() => setShowVoice(true)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-5 h-12 rounded-lg text-sm font-semibold"
-              >
-                <Mic className="w-4 h-4" />
-                Voice Update
-              </button>
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search assets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64"
+                />
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Sonic Tier Status Dashboard */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Status Summary Cards: Categorize assets by health tier */}
-        <div className="grid grid-cols-3 gap-6 mb-8">
-          <div className="sonic-card">
-            <Zap className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'sonic').length}</div>
-            <p className="text-sm opacity-90">SONIC • Good</p>
-          </div>
-          <div className="tails-card">
-            <AlertCircle className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'tails').length}</div>
-            <p className="text-sm opacity-90">TAILS • Maintenance</p>
-          </div>
-          <div className="eggman-card">
-            <AlertCircle className="w-6 h-6 mb-2" />
-            <div className="text-2xl font-bold">{assets.filter(a => a.status === 'eggman').length}</div>
-            <p className="text-sm opacity-90">EGGMAN • Danger</p>
-          </div>
-        </div>
-
         {/* Tab Navigation: Switch between Assets and Materials views */}
         <div className="flex gap-4 mb-8 border-b border-gray-700">
           <button
@@ -156,7 +135,7 @@ function App() {
           </button>
         </div>
 
-        {/* Assets Tab: Display asset cards with checkout/QR controls */}
+        {/* Assets Tab: Display asset cards with checkout controls */}
         {activeTab === 'assets' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {loading ? (
@@ -164,9 +143,14 @@ function App() {
             ) : assets.length === 0 ? (
               <p className="col-span-full text-gray-400">No assets. Create one to start.</p>
             ) : (
-              assets.map(asset => (
-                <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} />
-              ))
+              assets
+                .filter(asset => 
+                  asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (asset.serial_number && asset.serial_number.toLowerCase().includes(searchQuery.toLowerCase()))
+                )
+                .map(asset => (
+                  <AssetCard key={asset.id} asset={asset} onRefresh={fetchAssets} />
+                ))
             )}
             {/* Pagination Controls: Navigate through paginated assets */}
             <div className="col-span-full flex items-center justify-end gap-2 mt-4">
@@ -247,19 +231,6 @@ function App() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Voice Recorder Modal: Triggered by Voice Update button */}
-      {showVoice && <VoiceRecorder onClose={() => { setShowVoice(false); fetchAssets(); }} />}
-
-      {/* Floating Action Button: QR Code Scanner (placeholder) */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => alert('QR scanning coming soon — connect to html5-qrcode here')}
-          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white border border-blue-400/40"
-        >
-          <QrCode className="w-7 h-7" />
-        </button>
       </div>
     </div>
   );

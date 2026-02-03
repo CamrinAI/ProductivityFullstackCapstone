@@ -5,15 +5,3 @@
 body {
   @apply bg-gray-900 text-white;
 }
-
-.sonic-card {
-  @apply bg-blue-500/10 border-blue-500/30 border rounded-lg p-6;
-}
-
-.tails-card {
-  @apply bg-yellow-500/10 border-yellow-500/30 border rounded-lg p-6;
-}
-
-.eggman-card {
-  @apply bg-red-500/10 border-red-500/30 border rounded-lg p-6;
-}
