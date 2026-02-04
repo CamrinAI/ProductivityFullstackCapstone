@@ -2,15 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Download, AlertTriangle, Save } from 'lucide-react';
 
 /**
- * AssetCard Component
+ * ToolCard Component
  * 
- * Displays a single asset with:
- * - Sonic-tier status badge (color-coded health indicator)
+ * Displays a single tool with:
+ * - Status indicator
  * - Location management
  * - Serial number assignment
  * - Checkout/Checkin toggle buttons
- * - QR code download for physical labeling
- * - Delete asset action
+ * - Delete tool action
  */
 export default function AssetCard({ asset, onRefresh }) {
   const [loading, setLoading] = useState(false);
@@ -26,11 +25,11 @@ export default function AssetCard({ asset, onRefresh }) {
     setLocalStatus(asset.status);
   }, [asset.serial_number, asset.is_available, asset.status]);
 
-  // Toggle asset checkout status and log location
+  // Toggle tool checkout status and log location
   const handleCheckout = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkout`, {
+      await fetch(`http://localhost:3000/api/tools/${asset.id}/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: 'Job Site' }),
@@ -45,11 +44,11 @@ export default function AssetCard({ asset, onRefresh }) {
     setLoading(false);
   };
 
-  // Toggle asset checkin status and update location
+  // Toggle tool checkin status and update location
   const handleCheckin = async (prevAvailable, prevStatus) => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/checkin`, {
+      await fetch(`http://localhost:3000/api/tools/${asset.id}/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: 'Warehouse' }),
@@ -63,28 +62,6 @@ export default function AssetCard({ asset, onRefresh }) {
     setLoading(false);
   };
 
-  // Map status to display badge and card styling
-  const tierBadge = { sonic: '✅ SONIC', tails: '⚠️ TAILS', eggman: '🚨 EGGMAN' }[localStatus];
-  const tierColor = { sonic: 'sonic-card', tails: 'tails-card', eggman: 'eggman-card' }[localStatus];
-
-  // Generate QR code PNG from asset UUID
-  const handleDownloadQR = async () => {
-    try {
-      const res = await fetch(`http://localhost:3000/api/assets/${asset.id}/qr`);
-      if (!res.ok) throw new Error('Failed to download QR');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `asset_${asset.id}_qr.png`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert('Could not download QR code');
-    }
-  };
-
   const handleSaveSerial = async () => {
     if (!serial.trim()) {
       alert('Enter a serial number');
@@ -92,7 +69,7 @@ export default function AssetCard({ asset, onRefresh }) {
     }
     setSavingSerial(true);
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}/serial`, {
+      await fetch(`http://localhost:3000/api/tools/${asset.id}/serial`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serial_number: serial.trim() }),
@@ -113,7 +90,7 @@ export default function AssetCard({ asset, onRefresh }) {
   const [locationInput, setLocationInput] = useState(asset.location || '');
   const updateLocation = async () => {
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
+      await fetch(`http://localhost:3000/api/tools/${asset.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location: locationInput })
@@ -123,22 +100,22 @@ export default function AssetCard({ asset, onRefresh }) {
       console.error('Update location failed', e);
     }
   };
-  const deleteAsset = async () => {
-    if (!confirm('Delete this asset?')) return;
+  const deleteTool = async () => {
+    if (!confirm('Delete this tool?')) return;
     try {
-      await fetch(`http://localhost:3000/api/assets/${asset.id}`, {
+      await fetch(`http://localhost:3000/api/tools/${asset.id}`, {
         method: 'DELETE'
       });
       onRefresh();
     } catch (e) {
-      console.error('Delete asset failed', e);
+      console.error('Delete tool failed', e);
     }
   };
 
   return (
-    <div className={tierColor}>
+    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
       <h3 className="font-bold text-lg mb-2">{asset.name}</h3>
-      <p className="text-sm text-gray-400 mb-4">{tierBadge}</p>
+      <p className="text-sm text-gray-400 mb-4">{localAvailable ? '✅ Available' : '🔴 Checked Out'}</p>
       <div className="flex items-center gap-2">
         <input
           value={locationInput}
@@ -153,7 +130,7 @@ export default function AssetCard({ asset, onRefresh }) {
           Update
         </button>
         <button
-          onClick={deleteAsset}
+          onClick={deleteTool}
           className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm"
         >
           Delete
@@ -170,27 +147,19 @@ export default function AssetCard({ asset, onRefresh }) {
           <button
             onClick={handleSaveSerial}
             disabled={savingSerial}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
             Save
           </button>
         </div>
-        <button
-          onClick={handleDownloadQR}
-          className="w-full px-3 py-2 rounded font-semibold text-sm border border-gray-700 hover:border-blue-500 flex items-center justify-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Download QR
-        </button>
       </div>
+
       <div className="mt-4 space-y-2">
         <button
           onClick={async () => {
             const wasAvailable = localAvailable;
             const nextAvailable = !wasAvailable;
-            const nextStatus = nextAvailable ? 'sonic' : 'tails';
-            optimisticFlip(nextAvailable, nextStatus);
+            optimisticFlip(nextAvailable, 'available');
             wasAvailable
               ? await handleCheckout(wasAvailable, localStatus)
               : await handleCheckin(wasAvailable, localStatus);
@@ -201,6 +170,12 @@ export default function AssetCard({ asset, onRefresh }) {
           } disabled:opacity-50`}
         >
           {localAvailable ? '📤 Check Out' : '📥 Check In'}
+        </button>
+        <button
+          onClick={deleteTool}
+          className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm font-semibold"
+        >
+          Delete Tool
         </button>
       </div>
     </div>

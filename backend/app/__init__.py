@@ -24,13 +24,13 @@ def create_app(config_name='development'):
     migrate.init_app(app, db)
     CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://localhost:5174"])
     
-    # Register route blueprints: assets management and authentication
+    # Register route blueprints: tools management and authentication
     with app.app_context():
-        from app.routes.assets_routes import assets_bp
+        from app.routes.tools_routes import tools_bp
         from app.routes.auth_routes import auth_bp
         from app.utils.error_handler import register_error_handlers
         
-        app.register_blueprint(assets_bp)
+        app.register_blueprint(tools_bp)
         app.register_blueprint(auth_bp)
         register_error_handlers(app)
         

@@ -24,18 +24,18 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    assets = db.relationship('Asset', backref='owner', cascade='all, delete-orphan')
+    tools = db.relationship('Tool', backref='owner', cascade='all, delete-orphan')
     materials = db.relationship('Material', backref='owner', cascade='all, delete-orphan')
     
     def to_dict(self):
         return {'id': self.id, 'username': self.username, 'email': self.email, 'company': self.company}
 
-class Asset(db.Model):
+class Tool(db.Model):
     """
-    Asset model for tools and equipment tracking.
-    Stores asset metadata, location, checkout status, and generates unique QR codes.
+    Tool model for tools and equipment tracking.
+    Stores tool metadata, location, checkout status.
     """
-    __tablename__ = 'assets'
+    __tablename__ = 'tools'
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
@@ -100,13 +100,13 @@ class Material(db.Model):
 
 class CheckoutLog(db.Model):
     """
-    CheckoutLog model for tracking asset movements.
-    Records when assets are checked in/out and their locations.
+    CheckoutLog model for tracking tool movements.
+    Records when tools are checked in/out and their locations.
     """
     __tablename__ = 'checkout_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
+    tool_id = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
     checkout_time = db.Column(db.DateTime, default=datetime.utcnow)
     checkin_time = db.Column(db.DateTime)
     location_checkout = db.Column(db.String(255))
@@ -115,13 +115,13 @@ class CheckoutLog(db.Model):
 
 class AuditLog(db.Model):
     """
-    AuditLog model for tracking asset changes and modifications.
-    Maintains history of all operations performed on assets.
+    AuditLog model for tracking tool changes and modifications.
+    Maintains history of all operations performed on tools.
     """
     __tablename__ = 'audit_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
+    tool_id = db.Column(db.Integer, db.ForeignKey('tools.id'), nullable=False)
     action = db.Column(db.String(100), nullable=False)
     details = db.Column(db.Text)
     location = db.Column(db.String(255))
