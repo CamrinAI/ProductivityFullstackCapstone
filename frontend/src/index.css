@@ -1,5 +1,18 @@
-@import "tailwindcss";
-@plugin "daisyui";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition;
+  }
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white;
+  }
+  .btn-neutral {
+    @apply bg-gray-700 hover:bg-gray-600 text-white;
+  }
+}
 
 body {
   @apply bg-gray-900 text-white;
