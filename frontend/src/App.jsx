@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wrench, Search, Plus, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import AssetCard from './components/AssetCard';
 
+
 /**
  * Trade Tracker - Main Application Component
  * 
