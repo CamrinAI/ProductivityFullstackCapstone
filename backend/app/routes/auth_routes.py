@@ -111,3 +111,53 @@ def logout():
         'success': True,
         'message': 'Logout successful'
     }), 200
+
+@auth_bp.route('/change-role', methods=['POST'])
+@jwt_required()
+def change_role():
+    """Change user role (for demo/testing purposes)."""
+    try:
+        data = request.get_json()
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            raise APIError("User not found", 404)
+        
+        new_role = data.get('role')
+        if new_role not in ['technician', 'foreman', 'superintendent']:
+            raise ValidationError("Invalid role. Must be: technician, foreman, or superintendent")
+        
+        user.role = new_role
+        db.session.commit()
+        
+        # Create new token with updated role
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Role changed to {new_role}',
+            'user': user.to_dict(),
+            'access_token': access_token
+        }), 200
+    
+    except ValidationError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status_code
+    except APIError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status_code
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@auth_bp.route('/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    """Get all users (for onsite list)."""
+    try:
+        users = User.query.filter_by(is_active=True).all()
+        return jsonify({
+            'success': True,
+            'users': [user.to_dict() for user in users]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

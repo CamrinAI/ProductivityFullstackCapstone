@@ -1,16 +1,42 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import Tool, Material, CheckoutLog, AuditLog
+from app.models import Tool, Material, CheckoutLog, AuditLog, User
 from app.utils.error_handler import APIError, ValidationError
 from datetime import datetime
 
 """
 Tool Management Routes
 Handles CRUD operations for tools and materials, checkout/checkin tracking.
-All endpoints are open (no auth required for MVP) to allow public tool tracking.
+Role-based access:
+- Technicians: Can view tools and check out/in
+- Foremen: Can manage tools (create, update, delete)
+- Superintendents: Full access including material management
 """
 
 tools_bp = Blueprint('tools', __name__, url_prefix='/api/tools')
+
+def get_current_user():
+    """Helper to get current user from JWT token."""
+    try:
+        user_id = get_jwt_identity()
+        return User.query.get(user_id)
+    except:
+        return None
+
+def require_role(allowed_roles):
+    """Decorator to check if user has required role."""
+    def decorator(f):
+        def wrapper(*args, **kwargs):
+            user = get_current_user()
+            if not user:
+                raise APIError("Authentication required", 401)
+            if user.role not in allowed_roles:
+                raise APIError(f"Access denied. Required role: {', '.join(allowed_roles)}", 403)
+            return f(*args, **kwargs)
+        wrapper.__name__ = f.__name__
+        return wrapper
+    return decorator
 
 # ========== TOOL CRUD ENDPOINTS ==========
 
@@ -38,8 +64,10 @@ def get_tool(tool_id):
     return jsonify({'success': True, 'tool': tool.to_dict()}), 200
 
 @tools_bp.route('', methods=['POST'])
+@jwt_required()
+@require_role(['foreman', 'superintendent'])
 def create_tool():
-    """Create a new tool with optional serial number."""
+    """Create a new tool with optional serial number. (Foreman/Superintendent only)"""
     data = request.get_json()
     if not data or not data.get('name'):
         raise ValidationError("name required")

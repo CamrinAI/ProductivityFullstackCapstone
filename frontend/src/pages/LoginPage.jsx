@@ -64,66 +64,62 @@ export default function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-300">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-                disabled={loading}
-                className="w-full bg-gray-700/50 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-              />
-            </div>
+          <form onSubmit={handleSubmit}>
+            <fieldset className="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+            <legend className="fieldset-legend">{isLogin ? 'Login' : 'Sign Up'}</legend>
+
+            <label className="label">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              disabled={loading}
+              className="input"
+            />
 
             {!isLogin && (
               <>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email"
-                    disabled={loading}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-                  />
-                </div>
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  disabled={loading}
+                  className="input"
+                />
 
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">Company (Optional)</label>
-                  <input
-                    type="text"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Enter company name"
-                    disabled={loading}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-                  />
-                </div>
+                <label className="label">Company (Optional)</label>
+                <input
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="Company name"
+                  disabled={loading}
+                  className="input"
+                />
               </>
             )}
 
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-300">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                disabled={loading}
-                className="w-full bg-gray-700/50 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-              />
-            </div>
+            <label className="label">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              disabled={loading}
+              className="input"
+            />
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-3 rounded font-semibold transition mt-6"
+              className="btn btn-neutral mt-4 w-full"
             >
               {loading ? 'Processing...' : isLogin ? 'Login' : 'Create Account'}
             </button>
+          </fieldset>
           </form>
 
           {/* Toggle */}

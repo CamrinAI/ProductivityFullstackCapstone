@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Wrench, Search, Plus, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Wrench, Search, Plus, CheckCircle, AlertTriangle, XCircle, LogOut, User, Users } from 'lucide-react';
 import AssetCard from './components/AssetCard';
+import LoginPage from './pages/LoginPage';
+import RoleSwitcher from './components/RoleSwitcher';
+import CameraModal from './components/CameraModal';
+import OnsiteList from './components/OnsiteList';
+import { useAuth } from './context/AuthContext';
 
 
 /**
@@ -16,12 +21,33 @@ import AssetCard from './components/AssetCard';
  * - Role-based access control (Worker, Foreman, Superintendent)
  */
 function App() {
+  const { user, logout, loading: authLoading } = useAuth();
   const [tools, setTools] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('tools');
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
+
+  // Show login page if not authenticated
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // Check user role for permissions
+  const canManageTools = user.role === 'superintendent' || user.role === 'foreman';
+  const isAdmin = user.role === 'superintendent';
 
   // Fetch all tools from backend
   const fetchTools = async () => {
@@ -49,11 +75,27 @@ function App() {
     }
   };
 
+  // Fetch all users for onsite list
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`http://localhost:3000/api/auth/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.success) setUsers(data.users || []);
+    } catch (e) {
+      console.error('Failed to fetch users:', e);
+    }
+  };
+
   // Initialize: load tools and materials on mount
   useEffect(() => {
     if (!dataLoaded) {
       fetchTools();
       fetchMaterials();
+      fetchUsers();
       setDataLoaded(true);
     }
   }, [dataLoaded]);
@@ -98,7 +140,20 @@ function App() {
                 <p className="text-sm text-gray-400">Digital Tool Management</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* User Greeting */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                <User className="w-4 h-4 text-blue-400" />
+                <span className="text-sm">
+                  Hello, <span className="font-semibold text-blue-400">{user.username}</span>
+                  {user.role !== 'technician' && (
+                    <span className="ml-2 text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">
+                      {user.role === 'superintendent' ? 'Superintendent' : 'Foreman'}
+                    </span>
+                  )}
+                </span>
+              </div>
+
               {/* Search Bar */}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -110,12 +165,48 @@ function App() {
                   className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64"
                 />
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm">Logout</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Breadcrumbs */}
+        <div className="breadcrumbs text-sm mb-6">
+          <ul>
+            <li><a>Home</a></li>
+            <li><a>Tools</a></li>
+            <li>Dashboard</li>
+          </ul>
+        </div>
+
+        {/* Role-Based Access Info */}
+        {(canManageTools || isAdmin) && (
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-blue-400 mb-1">Management Access Granted</h3>
+                <p className="text-sm text-gray-300">
+                  {isAdmin 
+                    ? 'As a Superintendent, you have full access to create, edit, and delete tools and materials.'
+                    : 'As a Foreman, you can create, edit, and manage tools.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status Dashboard */}
         <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="bg-blue-500/10 border-blue-500/30 border rounded-lg p-6">
@@ -137,7 +228,7 @@ function App() {
           </div>
         </div>
 
-        {/* Tab Navigation: Switch between Tools and Materials views */}
+        {/* Tab Navigation: Switch between Tools, Onsite, and Materials views */}
         <div className="flex gap-4 mb-8 border-b border-gray-700">
           <button
             onClick={() => setActiveTab('tools')}
@@ -146,6 +237,15 @@ function App() {
             }`}
           >
             Tools ({tools.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('onsite')}
+            className={`pb-4 font-semibold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'onsite' ? 'border-blue-400 text-blue-400' : 'border-transparent text-gray-400'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Onsite ({tools.filter(t => !t.is_available).length} active)
           </button>
           <button
             onClick={() => setActiveTab('materials')}
@@ -193,6 +293,11 @@ function App() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Onsite Tab: Display employees and their checked out tools */}
+        {activeTab === 'onsite' && (
+          <OnsiteList tools={tools} users={users} />
         )}
 
         {/* Materials Tab: Display consumable inventory with quantity adjustments */}
@@ -259,15 +364,40 @@ function App() {
         )}
       </div>
 
-      {/* Floating Action Button: Add Tool */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => alert('Add new tool - functionality coming soon')}
-          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white border border-blue-400/40"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      </div>
+      {/* Floating Action Button: Add Tool with Camera */}
+      {canManageTools && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => setShowCamera(true)}
+            className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white border border-blue-400/40 transition hover:scale-110"
+            title="Add tool with photo"
+          >
+            <Plus className="w-8 h-8" />
+          </button>
+        </div>
+      )}
+
+      {/* Camera Modal */}
+      <CameraModal
+        isOpen={showCamera}
+        onClose={() => {
+          setShowCamera(false);
+          setCapturedPhoto(null);
+        }}
+        onCapture={(photoData) => {
+          setCapturedPhoto(photoData);
+          alert('Photo captured! Tool creation form would open here.\n\nIn production, this would:\n1. Show a form to enter tool details\n2. Upload the photo to the server\n3. Create the tool record');
+        }}
+      />
+
+      {/* Role Switcher for Testing - Remove in Production */}
+      <RoleSwitcher 
+        currentRole={user.role} 
+        onRoleChange={(updatedUser) => {
+          // Force refresh the page to update all role-based UI
+          window.location.reload();
+        }} 
+      />
     </div>
   );
 }

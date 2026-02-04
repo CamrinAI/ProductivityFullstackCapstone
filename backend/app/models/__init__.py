@@ -28,7 +28,14 @@ class User(db.Model):
     materials = db.relationship('Material', backref='owner', cascade='all, delete-orphan')
     
     def to_dict(self):
-        return {'id': self.id, 'username': self.username, 'email': self.email, 'company': self.company}
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'company': self.company,
+            'role': self.role,
+            'is_active': self.is_active
+        }
 
 class Tool(db.Model):
     """
