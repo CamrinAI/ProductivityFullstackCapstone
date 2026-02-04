@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Plus, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Wrench, Search, Plus, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import AssetCard from './components/AssetCard';
 
 /**
@@ -89,12 +89,12 @@ function App() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Package className="w-8 h-8 text-blue-400" />
+              <Wrench className="w-8 h-8 text-blue-400" />
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   Trade Tracker
                 </h1>
-                <p className="text-sm text-gray-400">Digital Tool Crib</p>
+                <p className="text-sm text-gray-400">Digital Tool Management</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
