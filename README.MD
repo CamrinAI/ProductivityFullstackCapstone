@@ -1,4 +1,4 @@
-# tradeflow
+# TradeFlow
 
 A full-stack asset and material management app for trade crews. Track tools, manage consumables, and see who is using what on site.
 
