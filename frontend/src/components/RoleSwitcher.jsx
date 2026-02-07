@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, Minimize2, Maximize2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * RoleSwitcher - Demo component for testing role-based access
@@ -7,8 +8,10 @@ import { Shield } from 'lucide-react';
  * Should be removed in production
  */
 export default function RoleSwitcher({ currentRole, onRoleChange }) {
+  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const roles = [
     { value: 'technician', label: 'Technician', color: 'gray' },
@@ -23,39 +26,77 @@ export default function RoleSwitcher({ currentRole, onRoleChange }) {
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      // Get token from AuthContext or localStorage as fallback
+      const authToken = token || localStorage.getItem('access_token');
+      
+      if (!authToken) {
+        setError('Not authenticated. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Attempting role change with token:', authToken ? 'Token present' : 'No token');
+
       const res = await fetch('http://localhost:3000/api/auth/change-role', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({ role: newRole })
       });
 
       const data = await res.json();
+      console.log('Role change response:', res.status, data);
 
-      if (data.success) {
-        // Update token if new one is provided
+      if (res.ok && data.success) {
+        // Update token with new one
         if (data.access_token) {
           localStorage.setItem('access_token', data.access_token);
         }
-        onRoleChange(data.user);
+        // Reload page to refresh auth state
+        setTimeout(() => window.location.reload(), 300);
       } else {
-        setError(data.error || 'Failed to change role');
+        setError(data.error || data.details || `Failed to change role (${res.status})`);
       }
     } catch (err) {
-      setError(err.message);
+      console.error('Role change error:', err);
+      setError(err.message || 'Network error');
     } finally {
       setLoading(false);
     }
   };
 
+  // Minimized view
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 right-4 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl">
+        <button
+          onClick={() => setIsMinimized(false)}
+          className="flex items-center gap-2 px-4 py-3 hover:bg-gray-700 rounded-lg transition"
+        >
+          <Shield className="w-4 h-4 text-blue-400" />
+          <span className="text-sm font-semibold">Role Switcher</span>
+          <Maximize2 className="w-3 h-3 text-gray-400" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-2xl max-w-xs">
-      <div className="flex items-center gap-2 mb-3">
-        <Shield className="w-4 h-4 text-blue-400" />
-        <h3 className="text-sm font-semibold">Role Switcher (Demo)</h3>
+    <div className="fixed bottom-4 right-4 bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-2xl max-w-xs z-50">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-blue-400" />
+          <h3 className="text-sm font-semibold">Role Switcher (Demo)</h3>
+        </div>
+        <button
+          onClick={() => setIsMinimized(true)}
+          className="p-1 hover:bg-gray-700 rounded transition"
+          title="Minimize"
+        >
+          <Minimize2 className="w-3 h-3 text-gray-400" />
+        </button>
       </div>
 
       {error && (

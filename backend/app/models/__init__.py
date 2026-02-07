@@ -24,8 +24,8 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    tools = db.relationship('Tool', backref='owner', cascade='all, delete-orphan')
-    materials = db.relationship('Material', backref='owner', cascade='all, delete-orphan')
+    tools = db.relationship('Tool', backref='owner', cascade='all, delete-orphan', foreign_keys='Tool.user_id')
+    materials = db.relationship('Material', backref='owner', cascade='all, delete-orphan', foreign_keys='Material.user_id')
     
     def to_dict(self):
         return {
@@ -53,6 +53,7 @@ class Tool(db.Model):
     status = db.Column(db.String(50), default='available')
     checkout_date = db.Column(db.DateTime)  # When asset was last checked out
     is_available = db.Column(db.Boolean, default=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # Owner of the tool
     checked_out_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # Track who has the tool
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -88,6 +89,7 @@ class Material(db.Model):
     min_stock = db.Column(db.Integer, default=5)
     location = db.Column(db.String(255))
     cost_per_unit = db.Column(db.Float)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

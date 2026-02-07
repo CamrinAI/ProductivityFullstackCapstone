@@ -7,6 +7,9 @@ class Config:
     JSON_SORT_KEYS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     API_BEARER_TOKEN = os.getenv('API_BEARER_TOKEN')
+    # JWT Configuration
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
 
 class DevelopmentConfig(Config):
     """Development environment."""

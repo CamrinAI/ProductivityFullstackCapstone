@@ -117,7 +117,7 @@ def logout():
 def change_role():
     """Change user role (for demo/testing purposes)."""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
@@ -125,7 +125,7 @@ def change_role():
             raise APIError("User not found", 404)
         
         new_role = data.get('role')
-        if new_role not in ['technician', 'foreman', 'superintendent']:
+        if not new_role or new_role not in ['technician', 'foreman', 'superintendent']:
             raise ValidationError("Invalid role. Must be: technician, foreman, or superintendent")
         
         user.role = new_role

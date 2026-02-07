@@ -3,7 +3,7 @@ Seed script to create demo users with different roles for testing.
 Run this script to populate the database with test users.
 """
 from app import create_app, db
-from app.models import User, Tool
+from app.models import User, Tool, Material
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 
@@ -170,7 +170,81 @@ def seed_demo_users():
         
         db.session.commit()
         
-        print("\n✅ Demo users and tools created successfully!")
+        # Create demo materials
+        materials_data = [
+            {
+                'name': 'Electrical Wire (12 AWG)',
+                'unit': 'feet',
+                'quantity': 250,
+                'min_stock': 100,
+                'location': 'Warehouse - Electrical Section',
+                'cost_per_unit': 0.45
+            },
+            {
+                'name': 'Bolts (M8 x 20mm)',
+                'unit': 'box',
+                'quantity': 15,
+                'min_stock': 10,
+                'location': 'Warehouse - Hardware Aisle',
+                'cost_per_unit': 12.99
+            },
+            {
+                'name': 'Lug Nuts',
+                'unit': 'box',
+                'quantity': 8,
+                'min_stock': 5,
+                'location': 'Warehouse - Automotive Section',
+                'cost_per_unit': 18.50
+            },
+            {
+                'name': 'Drywall Screws (1-5/8")',
+                'unit': 'box',
+                'quantity': 3,
+                'min_stock': 5,
+                'location': 'Warehouse - Fasteners',
+                'cost_per_unit': 9.99
+            },
+            {
+                'name': 'Wire Connectors',
+                'unit': 'pack',
+                'quantity': 25,
+                'min_stock': 10,
+                'location': 'Warehouse - Electrical Section',
+                'cost_per_unit': 6.50
+            },
+            {
+                'name': 'Cable Ties (8 inch)',
+                'unit': 'pack',
+                'quantity': 12,
+                'min_stock': 8,
+                'location': 'Warehouse - Cable Management',
+                'cost_per_unit': 7.25
+            },
+            {
+                'name': 'Duct Tape',
+                'unit': 'roll',
+                'quantity': 18,
+                'min_stock': 10,
+                'location': 'Warehouse - Supplies',
+                'cost_per_unit': 5.99
+            },
+            {
+                'name': 'Safety Glasses',
+                'unit': 'pair',
+                'quantity': 45,
+                'min_stock': 20,
+                'location': 'Warehouse - Safety Equipment',
+                'cost_per_unit': 3.50
+            }
+        ]
+        
+        for material_data in materials_data:
+            material = Material(**material_data)
+            db.session.add(material)
+        
+        db.session.commit()
+        
+        print("\n✅ Demo users, tools, and materials created successfully!")
         print("\nLogin credentials:")
         print("  Technician      -> username: demo        | password: demo123")
         print("  Foreman         -> username: foreman     | password: foreman123")
@@ -180,6 +254,10 @@ def seed_demo_users():
         print("  sarah_jones  - Has 1 tool checked out")
         print("  mike_wilson  - Has 3 tools checked out")
         print("  lisa_brown   - Available (no tools)")
+        print("\nDemo Materials:")
+        print("  - Electrical Wire, Bolts, Lug Nuts, Screws, Wire Connectors")
+        print("  - Cable Ties, Duct Tape, Safety Glasses")
+        print("  - Some items below minimum stock (need reorder)")
 
 if __name__ == '__main__':
     seed_demo_users()

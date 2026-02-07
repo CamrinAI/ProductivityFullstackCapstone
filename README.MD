@@ -1,203 +1,108 @@
-# Trade-Tracker AI - Asset Management System
+# Trade-Tracker AI
 
-Professional full-stack asset management platform for electricians, plumbers, and trade contractors.
+A full-stack asset and material management app for trade crews. Track tools, manage consumables, and see who is using what on site.
 
-## 🎯 Features
+## ✅ Core Features
+- **Authentication** (login/register) with role-based UI
+- **Tools dashboard** with search, pagination, check-out/in, and status tags
+- **Materials inventory** with add/remove quantities and low-stock alerts
+- **Onsite view** that lists active checkouts as “Name Tool in use”
+- **Admin actions** for creating tools and materials (UI-gated by role)
 
-- **Asset Tracking**: Monitor tools and equipment with QR codes
-- **Voice-to-Inventory**: Update inventory using voice commands (OpenAI Whisper + GPT-4o)
-- **Sonic Tier System**: Visual status indicators (Sonic/Tails/Eggman)
-- **Location-Based Alerts**: Get alerted when assets are far from job site
-- **Material Management**: Track consumables with min-stock levels
-- **Checkout/Checkin Logs**: Full audit trail for all asset movements
-- **Full CRUD Operations**: Create, Read, Update, Delete for Assets and Materials
-
-## 🛠 Tech Stack
-
-**Backend**: Flask + Flask-SQLAlchemy + PostgreSQL  
-**Frontend**: React.js + Tailwind CSS  
-**AI**: OpenAI Whisper (transcription) + GPT-4o (parsing)  
-**QR**: qrcode (generation) + html5-qrcode (scanning)  
-**Database**: PostgreSQL (production) / SQLite (dev)
-
-## 📋 Project Structure
-
-```
-ProductivityFullstackCapstone/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py          # Flask factory
-│   │   ├── config.py            # Environment config
-│   │   ├── models/
-│   │   │   └── __init__.py      # SQLAlchemy models
-│   │   ├── routes/
-│   │   │   ├── assets_routes.py # Asset CRUD
-│   │   │   └── voice_routes.py  # Voice-to-inventory
-│   │   ├── services/
-│   │   │   └── voice_service.py # OpenAI integration
-│   │   └── utils/
-│   │       └── error_handler.py # Global error handling
-│   ├── run.py                   # Entry point
-│   ├── requirements.txt         # Python dependencies
-│   └── .venv/                   # Virtual environment
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx              # Main app
-│   │   ├── components/
-│   │   │   ├── AssetCard.jsx
-│   │   │   ├── VoiceRecorder.jsx
-│   │   │   └── QRScanner.jsx
-│   │   └── index.css            # Tailwind styles
-│   ├── package.json
-│   └── vite.config.js
-└── README.md
-```
+## 🧰 Tech Stack
+- **Frontend:** React + Vite + Tailwind CSS
+- **Backend:** Flask + SQLAlchemy
+- **Database:** SQLite (dev)
 
 ## 🚀 Quick Start
 
-### Backend Setup
-
+### Backend
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-# first-time DB setup (Flask-Migrate)
-FLASK_APP=app:create_app FLASK_ENV=development flask db upgrade
-
-# run server
 python run.py
 ```
+Runs at http://localhost:3000
 
-Server runs on http://localhost:3000
-
-### Frontend Setup
-
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+Runs at http://localhost:5173
 
-App runs on http://localhost:5173
+## 🔐 Demo Accounts
+- **Technician:** demo / demo123
+- **Foreman:** foreman / foreman123
+- **Superintendent:** super / super123
 
-### Environment Variables
-- **API Routes**
+## 🧩 Roles & Permissions (UI)
+- **Technician:** view tools, check out/in
+- **Foreman:** technician + create/edit tools
+- **Superintendent:** foreman + materials management
 
-| Method | Path | Headers | Body | Notes |
-| --- | --- | --- | --- | --- |
-| GET | /api/assets?page=&per_page= | - | - | Paginated list of all assets |
-| POST | /api/assets | - | `{ "name", "asset_type?", "description?", "location?", "serial_number?" }` | Creates asset with unique serial (if provided) |
-| GET | /api/assets/<id> | - | - | Get single asset by ID |
-| PUT | /api/assets/<id> | - | `{ "name?", "location?", "description?" }` | Update asset fields |
-| DELETE | /api/assets/<id> | - | - | Delete asset |
-| POST | /api/assets/<id>/checkout | - | `{ "location": "Job Site" }` | Marks asset checked out, logs location |
-| POST | /api/assets/<id>/checkin | - | `{ "location": "Warehouse" }` | Marks asset checked in |
-| GET | /api/assets/<id>/qr | - | - | Downloads QR PNG for asset |
-| POST | /api/assets/<id>/serial | - | `{ "serial_number": "ABC-123" }` | Updates/sets serial number (unique) |
-| GET | /api/assets/materials | - | - | Lists all materials |
-| POST | /api/assets/materials | - | `{ "name", "unit?", "quantity?", "min_stock?" }` | Creates material |
-| PUT | /api/assets/materials/<id> | - | `{ "name?", "unit?", "quantity?", "min_stock?" }` | Update material |
-| DELETE | /api/assets/materials/<id> | - | - | Delete material |
-| POST | /api/voice/update | multipart/form-data | `audio` file | Voice-to-inventory update (Whisper + GPT-4o) |
+## 📦 Key API Routes
 
-Create `.env` in backend/:
+### Auth
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `GET /api/auth/users`
 
+### Tools
+- `GET /api/tools`
+- `POST /api/tools`
+- `PUT /api/tools/<id>`
+- `DELETE /api/tools/<id>`
+- `POST /api/tools/<id>/checkout`
+- `POST /api/tools/<id>/checkin`
+- `POST /api/tools/<id>/serial`
+
+### Materials
+- `GET /api/tools/materials`
+- `POST /api/tools/materials`
+- `PUT /api/tools/materials/<id>`
+- `DELETE /api/tools/materials/<id>`
+
+## 🧱 Data Model (Simplified)
+- **User:** id, username, email, password_hash, role, company
+- **Tool:** id, name, status, is_available, checked_out_by, checkout_date
+- **Material:** id, name, unit, quantity, min_stock
+
+## 📌 Project Structure (Key Files)
 ```
-FLASK_ENV=development
-DATABASE_URL=sqlite:///trade_tracker.db
-OPENAI_API_KEY=sk-your-key
-```
-
-## 📊 Data Models
-
-### User
-```python
-- id (PK)
-- username (unique)
-- email (unique)
-- password_hash
-- company (e.g., "ABC Electrical")
-- role (technician/manager/admin)
-```
-
-### Asset
-```python
-- id (PK)
-- owner_id (FK → User)
-- name (e.g., "Milwaukee Drill Kit")
-- asset_type (power_tool/hand_tool/safety_gear)
-- qr_code (UUID)
-- location (job site/warehouse/truck)
-- status (sonic/tails/eggman)
-- checkout_date (when last checked out)
-- is_available (boolean)
-```
-
-### Material
-```python
-- id (PK)
-- owner_id (FK → User)
-- name (e.g., "12-2 Romex Cable")
-- unit (spool/box/roll)
-- quantity
-- min_stock (reorder threshold)
+backend/
+    app/
+        routes/
+            auth_routes.py
+            tools_routes.py
+        models/__init__.py
+    run.py
+frontend/
+    src/
+        App.jsx
+        context/AuthContext.jsx
+        components/
+            AssetCard.jsx
+            MaterialCard.jsx
+            OnsiteList.jsx
+            AddToolModal.jsx
+            AddMaterialModal.jsx
 ```
 
-### CheckoutLog
-```python
-- id (PK)
-- asset_id (FK → Asset)
-- user_id (FK → User)
-- checkout_time
-- checkin_time
-- location_checkout
-- location_checkin
-- notes
-```
+## ✅ Rubric Mapping
+- **Problem Solved:** Centralizes tool/material tracking for trade crews
+- **Full-Stack:** React frontend + Flask backend + SQL database
+- **CRUD:** Tools and Materials support full CRUD and inventory adjustments
+- **Auth:** Secure login/register with protected routes
+- **State & UX:** Sorted views, low-stock indicators, onsite status
 
-## 🔊 Voice-to-Inventory API
-
-**Endpoint**: `POST /api/voice/update`
-
-**Request**:
-```
-Content-Type: multipart/form-data
-Body: audio file + user_id
-```
-
-**Example**: "Add 5 spools of wire to warehouse"
-
-**Response**:
-```json
-{
-  "success": true,
-  "item": "Romex Cable",
-  "quantity": 5,
-  "action": "add",
-  "type": "material"
-}
-```
-
-## 🎨 Sonic Tier System
-
-| Tier | Color | Condition | Checkout Duration |
-|------|-------|-----------|-------------------|
-| SONIC | Blue | Good | < 7 days |
-| TAILS | Yellow | Maintenance Due | 7-30 days |
-| EGGMAN | Red | Missing/Damaged | > 30 days or reported |
-
-## 🔐 Security Features
-
-- Error handling with sanitized messages
-- CORS enabled for frontend
-- Input validation on all endpoints
-
-## 📝 API Endpoints
-
-### Assets
-- `GET /api/assets` - List all assets
-- `POST /api/assets` - Create asset
+## 📄 License
+MIT
 - `GET /api/assets/<id>` - Get asset details
 - `PUT /api/assets/<id>` - Update asset
 - `POST /api/assets/<id>/checkout` - Check out asset

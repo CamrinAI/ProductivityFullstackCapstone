@@ -4,22 +4,25 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('access_token'));
-  const [loading, setLoading] = useState(!!localStorage.getItem('access_token'));
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if token exists and verify it
-    if (token) {
-      fetchCurrentUser();
+    // Initialize token from localStorage on mount
+    const storedToken = localStorage.getItem('access_token');
+    if (storedToken) {
+      setToken(storedToken);
+      fetchCurrentUser(storedToken);
     } else {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = async (authToken) => {
+    const tokenToUse = authToken || token;
     try {
       const res = await fetch('http://localhost:3000/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${tokenToUse}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -54,7 +57,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('access_token', access_token);
         setToken(access_token);
         setUser(user);
-          setLoading(false);
+        setLoading(false);
         return { success: true, user };
       } else {
         return { success: false, error: data.error };
@@ -76,11 +79,11 @@ export function AuthProvider({ children }) {
       console.log('Login response:', data);
       
       if (data.success) {
-          setLoading(false);
         const { user, access_token } = data;
         localStorage.setItem('access_token', access_token);
         setToken(access_token);
         setUser(user);
+        setLoading(false);
         return { success: true, user };
       } else {
         return { success: false, error: data.error };
@@ -111,8 +114,6 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-    console.error('Register error:', e);
-  console.error('Login error:', e);
 
 export function useAuth() {
   const context = useContext(AuthContext);

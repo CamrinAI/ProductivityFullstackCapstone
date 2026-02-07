@@ -95,7 +95,7 @@ def create_tool():
 
 @tools_bp.route('/<int:tool_id>', methods=['PUT'])
 def update_tool(tool_id):
-    """Update tool fields (name, location, description). Serial number updates use separate endpoint."""
+    """Update tool fields (name, location, description, status). Serial number updates use separate endpoint."""
     tool = Tool.query.get(tool_id)
     if not tool:
         raise APIError("Tool not found", 404)
@@ -109,6 +109,8 @@ def update_tool(tool_id):
         tool.location = data['location']
     if 'description' in data:
         tool.description = data['description']
+    if 'status' in data:
+        tool.status = data['status']
     
     db.session.commit()
     return jsonify({'success': True, 'tool': tool.to_dict()}), 200
@@ -142,6 +144,8 @@ def checkout_tool(tool_id):
     tool.is_available = False
     tool.checkout_date = datetime.utcnow()
     tool.location = data.get('location', 'unknown')
+    if data.get('checked_out_by'):
+        tool.checked_out_by = data.get('checked_out_by')
     
     db.session.add(checkout)
     db.session.commit()
@@ -165,6 +169,7 @@ def checkin_tool(tool_id):
     tool.is_available = True
     tool.checkout_date = None
     tool.location = data.get('location', 'warehouse')
+    tool.checked_out_by = None
     db.session.commit()
     return jsonify({'success': True, 'tool': tool.to_dict()}), 200
 

@@ -1,16 +1,14 @@
 @import "tailwindcss";
 
-body {
-  @apply bg-gray-900 text-white;
-}
-
 * {
-  @apply box-border;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-text-size-adjust: 100%;
 }
 
-html,
 body {
-  @apply bg-gray-900 text-white;
-  padding: 0;
+  background-color: #111827;
+  color: white;
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Wrench, Search, Plus, CheckCircle, AlertTriangle, XCircle, LogOut, User, Users } from 'lucide-react';
 import AssetCard from './components/AssetCard';
+import MaterialCard from './components/MaterialCard';
 import LoginPage from './pages/LoginPage';
-import RoleSwitcher from './components/RoleSwitcher';
-import CameraModal from './components/CameraModal';
+import AddToolModal from './components/AddToolModal';
+import AddMaterialModal from './components/AddMaterialModal';
 import OnsiteList from './components/OnsiteList';
 import { useAuth } from './context/AuthContext';
 
@@ -29,25 +30,20 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('tools');
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [showAddTool, setShowAddTool] = useState(false);
+  const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage] = useState(10);
 
-  // Show login page if not authenticated
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
+  // Sort helpers: available first, checked out next, damaged/maintenance last
+  const toolStatusRank = (tool) => {
+    if (tool.status === 'damaged' || tool.status === 'maintenance') return 2;
+    if (!tool.is_available) return 1;
+    return 0;
+  };
 
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  // Check user role for permissions
-  const canManageTools = user.role === 'superintendent' || user.role === 'foreman';
-  const isAdmin = user.role === 'superintendent';
+  const sortedTools = [...tools].sort((a, b) => toolStatusRank(a) - toolStatusRank(b));
+  const sortedMaterials = [...materials].sort((a, b) => (a.needs_reorder ? 1 : 0) - (b.needs_reorder ? 1 : 0));
 
   // Fetch all tools from backend
   const fetchTools = async () => {
@@ -90,20 +86,6 @@ function App() {
     }
   };
 
-  // Initialize: load tools and materials on mount
-  useEffect(() => {
-    if (!dataLoaded) {
-      fetchTools();
-      fetchMaterials();
-      fetchUsers();
-      setDataLoaded(true);
-    }
-  }, [dataLoaded]);
-
-  // Pagination state and handler
-  const [page, setPage] = useState(1);
-  const [perPage] = useState(10);
-
   const fetchToolsPaged = async (nextPage = page) => {
     setLoading(true);
     try {
@@ -118,12 +100,44 @@ function App() {
     setLoading(false);
   };
 
+  // Initialize: load tools and materials on mount
+  useEffect(() => {
+    if (!dataLoaded && user) {
+      fetchTools();
+      fetchMaterials();
+      fetchUsers();
+      setDataLoaded(true);
+    }
+  }, [dataLoaded, user]);
+
   // Re-fetch when page changes
   useEffect(() => {
-    if (dataLoaded) {
+    if (dataLoaded && user) {
       fetchToolsPaged(page);
     }
   }, [page, perPage]);
+
+  // Show loading state or login page
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="mb-4">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+          </div>
+          <p className="text-xl">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // Check user role for permissions
+  const canManageTools = user.role === 'superintendent' || user.role === 'foreman';
+  const isAdmin = user.role === 'superintendent';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
@@ -181,12 +195,28 @@ function App() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Breadcrumbs */}
-        <div className="breadcrumbs text-sm mb-6">
-          <ul>
-            <li><a>Home</a></li>
-            <li><a>Tools</a></li>
-            <li>Dashboard</li>
-          </ul>
+        <div className="flex items-center gap-2 text-sm mb-6 text-gray-400">
+          <button 
+            onClick={() => {
+              setActiveTab('tools');
+              setSearchQuery('');
+              setPage(1);
+            }}
+            className="hover:text-blue-400 cursor-pointer transition"
+          >
+            Home
+          </button>
+          <span>/</span>
+          <button 
+            onClick={() => setActiveTab('tools')}
+            className="hover:text-blue-400 cursor-pointer transition"
+          >
+            Tools
+          </button>
+          <span>/</span>
+          <span className="text-gray-300">
+            {activeTab === 'tools' ? 'Dashboard' : activeTab === 'onsite' ? 'Onsite' : 'Materials'}
+          </span>
         </div>
 
         {/* Role-Based Access Info */}
@@ -266,13 +296,13 @@ function App() {
               ) : tools.length === 0 ? (
                 <p className="col-span-full text-gray-400">No tools. Create one to start.</p>
               ) : (
-                tools
+                sortedTools
                   .filter(tool => 
                     tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     (tool.serial_number && tool.serial_number.toLowerCase().includes(searchQuery.toLowerCase()))
                   )
                   .map(tool => (
-                    <AssetCard key={tool.id} asset={tool} onRefresh={fetchTools} />
+                    <AssetCard key={tool.id} asset={tool} onRefresh={fetchTools} userId={user?.id} />
                   ))
               )}
             </div>
@@ -302,102 +332,56 @@ function App() {
 
         {/* Materials Tab: Display consumable inventory with quantity adjustments */}
         {activeTab === 'materials' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {materials.length === 0 ? (
-              <p className="text-gray-400">No materials</p>
-            ) : (
-              materials.map(m => (
-                <div key={m.id} className={`p-4 rounded-lg border ${m.needs_reorder ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-800/50 border-gray-700'}`}>
-                  <h4 className="font-semibold">{m.name}</h4>
-                  <p className="text-sm text-gray-400">Qty: {m.quantity} {m.unit}</p>
-                  {/* Quick quantity adjustment buttons for materials */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      onClick={async () => {
-                        try {
-                          await fetch(`http://localhost:3000/api/tools/materials/${m.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) + 1) })
-                          });
-                          fetchMaterials();
-                        } catch (e) {
-                          console.error('Increase qty failed', e);
-                        }
-                      }}
-                      className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
-                    >+1</button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await fetch(`http://localhost:3000/api/tools/materials/${m.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ quantity: Math.max(0, (m.quantity || 0) - 1) })
-                          });
-                          fetchMaterials();
-                        } catch (e) {
-                          console.error('Decrease qty failed', e);
-                        }
-                      }}
-                      className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs"
-                    >-1</button>
-                    <button
-                      onClick={async () => {
-                        if (!confirm('Delete this material?')) return;
-                        try {
-                          await fetch(`http://localhost:3000/api/tools/materials/${m.id}`, {
-                            method: 'DELETE'
-                          });
-                          fetchMaterials();
-                        } catch (e) {
-                          console.error('Delete material failed', e);
-                        }
-                      }}
-                      className="ml-auto px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
-                    >Delete</button>
-                  </div>
-                </div>
-              ))
-            )}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-200">Materials</h3>
+              <button
+                onClick={() => setShowAddMaterial(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold"
+              >
+                Add Material
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {materials.length === 0 ? (
+                <p className="col-span-full text-gray-400">No materials</p>
+              ) : (
+                sortedMaterials.map(m => (
+                  <MaterialCard key={m.id} material={m} onRefresh={fetchMaterials} />
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Floating Action Button: Add Tool with Camera */}
+      {/* Floating Action Button: Add Tool */}
       {canManageTools && (
         <div className="fixed bottom-6 right-6 z-40">
           <button
-            onClick={() => setShowCamera(true)}
+            onClick={() => setShowAddTool(true)}
             className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl flex items-center justify-center text-white border border-blue-400/40 transition hover:scale-110"
-            title="Add tool with photo"
+            title="Add new tool"
           >
             <Plus className="w-8 h-8" />
           </button>
         </div>
       )}
 
-      {/* Camera Modal */}
-      <CameraModal
-        isOpen={showCamera}
-        onClose={() => {
-          setShowCamera(false);
-          setCapturedPhoto(null);
-        }}
-        onCapture={(photoData) => {
-          setCapturedPhoto(photoData);
-          alert('Photo captured! Tool creation form would open here.\n\nIn production, this would:\n1. Show a form to enter tool details\n2. Upload the photo to the server\n3. Create the tool record');
-        }}
+      {/* Add Tool Modal */}
+      <AddToolModal
+        isOpen={showAddTool}
+        onClose={() => setShowAddTool(false)}
+        onToolAdded={fetchTools}
       />
 
-      {/* Role Switcher for Testing - Remove in Production */}
-      <RoleSwitcher 
-        currentRole={user.role} 
-        onRoleChange={(updatedUser) => {
-          // Force refresh the page to update all role-based UI
-          window.location.reload();
-        }} 
+      <AddMaterialModal
+        isOpen={showAddMaterial}
+        onClose={() => setShowAddMaterial(false)}
+        onMaterialAdded={fetchMaterials}
       />
+
+      {/* Future Implementation: Role Switcher for testing role-based permissions */}
     </div>
   );
 }
