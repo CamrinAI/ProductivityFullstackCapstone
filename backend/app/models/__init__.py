@@ -2,7 +2,7 @@ from datetime import datetime
 from app import db
 
 """
-Database models for Trade-Tracker asset management system.
+Database models for TradeFlow asset management system.
 Represents: Users, Assets (tools/equipment), Materials (consumables), and audit logs.
 """
 

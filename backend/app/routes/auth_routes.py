@@ -1,4 +1,4 @@
-"""Authentication routes for Trade-Tracker."""
+"""Authentication routes for TradeFlow."""
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app import db
